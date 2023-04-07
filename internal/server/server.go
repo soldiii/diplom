@@ -5,7 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/soldiii/diplom//internal/handler"
+	"github.com/soldiii/diplom/internal/handler"
 )
 
 type Server struct {
@@ -47,5 +47,6 @@ func (srv *Server) RunServer() error {
 }
 
 func (srv *Server) ConfigureRouter() {
+	handler := handler.NewHandler()
 	handler.InitRoutes(srv.Router)
 }
