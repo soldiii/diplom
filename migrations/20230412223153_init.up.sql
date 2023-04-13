@@ -6,16 +6,18 @@ CREATE TABLE users
     surname varchar(30) not null,
     patronymic varchar(30),
     reg_date_time timestamp not null,
-    encrypted_password varchar(64) not null
+    encrypted_password varchar(64) not null,
+    role varchar(12) not null
 );
 
 CREATE TABLE supervisors
 (
-    sup_id serial not null primary key references users (id)
+    id serial not null primary key references users (id),
+    initials varchar(30) not null
 );
 
 CREATE TABLE agents
 (
-    agent_id serial not null primary key references users (id),
-    supervisor_id serial references supervisors (sup_id)
+    id serial not null primary key references users (id),
+    supervisor_id serial references supervisors (id)
 );

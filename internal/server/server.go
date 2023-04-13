@@ -26,6 +26,7 @@ func NewServer(cfg *ServerConfig) *Server {
 }
 
 func (srv *Server) ConfigureLogger() error {
+	srv.Logger.SetFormatter(new(logrus.JSONFormatter))
 	lvl, err := logrus.ParseLevel(srv.Config.LogLevel)
 	if err != nil {
 		return err

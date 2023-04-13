@@ -11,7 +11,7 @@ func NewServConfig() *ServerConfig {
 	return &ServerConfig{
 		Address:     ":8080",
 		LogLevel:    "debug",
-		DatabaseURL: "host=localhost user=postgres password=postgres dbname=supervisor_bd sslmode=disable",
+		DatabaseURL: "host=localhost user=postgres password=postgres dbname=supervisor_app_bd sslmode=disable",
 	}
 
 }

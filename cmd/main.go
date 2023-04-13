@@ -4,6 +4,7 @@ import (
 	"flag"
 
 	"github.com/BurntSushi/toml"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/soldiii/diplom/internal/server"
 )
@@ -24,6 +25,10 @@ func main() {
 	_, err := toml.DecodeFile(configPath, &servConfig)
 	if err != nil {
 		logrus.Fatalf("Reading or decoding config file error: %s", err.Error())
+	}
+
+	if err := godotenv.Load(); err != nil {
+		logrus.Fatalf("Error loading env variables: %s", err.Error())
 	}
 
 	serv := server.NewServer(servConfig)
