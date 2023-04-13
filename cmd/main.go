@@ -21,12 +21,13 @@ func main() {
 	flag.Parse()
 
 	servConfig := server.NewServConfig()
-	_, err := toml.DecodeFile(configPath, servConfig)
+	_, err := toml.DecodeFile(configPath, &servConfig)
 	if err != nil {
 		logrus.Fatalf("Reading or decoding config file error: %s", err.Error())
 	}
 
 	serv := server.NewServer(servConfig)
+
 	if err := serv.RunServer(); err != nil {
 		logrus.Fatalf("Running server error: %s", err.Error())
 	}

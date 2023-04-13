@@ -1,10 +1,3 @@
-[server]
 addr = ":8080"
 log_level = "debug"
-
-[store]
-host = "localhost"
-user = "postgres"
-password = "postgres"
-dbname = "supervisor_app_bd"
-sslmode = "disable"
+database_url = "host=localhost user=postgres dbname=supervisor_bd sslmode=disable password=postgres"
