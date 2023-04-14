@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/soldiii/diplom/internal/model"
@@ -15,7 +16,14 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			NewErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		//s.store.User().Create(u)
+
+		id, err := h.services.Authorization.CreateUser(&user)
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		fmt.Print(id)
 	}
 }
 

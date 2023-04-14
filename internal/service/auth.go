@@ -20,6 +20,7 @@ func (s *AuthService) CreateUser(user *model.User) (int, error) {
 		return 0, err
 	}
 	user.EncryptedPassword = password
+
 	return s.repo.CreateUser(user)
 }
 

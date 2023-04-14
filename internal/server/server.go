@@ -4,9 +4,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 	"github.com/soldiii/diplom/internal/handler"
 	"github.com/soldiii/diplom/internal/repository"
+	"github.com/soldiii/diplom/internal/service"
 )
 
 type Server struct {
@@ -40,26 +42,29 @@ func (srv *Server) RunServer() error {
 		return err
 	}
 
-	srv.ConfigureRouter()
-
-	if err := srv.ConfigurePostgresDB(); err != nil {
+	sqldb, err := srv.ConfigurePostgresDB()
+	if err != nil {
 		return err
 	}
+	repo := repository.NewRepository(sqldb)
+	srvc := service.NewService(repo)
+	srv.ConfigureRouter(srvc)
 	srv.Logger.Info("Сервер запущен")
 
 	return http.ListenAndServe(srv.Config.Address, srv.Router)
 }
 
-func (srv *Server) ConfigureRouter() {
-	handler := handler.NewHandler()
+func (srv *Server) ConfigureRouter(service *service.Service) {
+	handler := handler.NewHandler(service)
 	handler.InitRoutes(srv.Router)
 }
 
-func (srv *Server) ConfigurePostgresDB() error {
+func (srv *Server) ConfigurePostgresDB() (*sqlx.DB, error) {
 	db := repository.NewPostgresDB(srv.Config.DatabaseURL)
-	if err := db.OpenPostgresDB(); err != nil {
-		return err
+	sqdb, err := db.OpenPostgresDB()
+	if err != nil {
+		return nil, err
 	}
 	srv.PostgresDB = db
-	return nil
+	return sqdb, nil
 }

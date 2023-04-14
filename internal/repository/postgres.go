@@ -26,19 +26,19 @@ func NewPostgresDB(dbURL string) *PostgresDB {
 	}
 }
 
-func (p *PostgresDB) OpenPostgresDB() error {
+func (p *PostgresDB) OpenPostgresDB() (*sqlx.DB, error) {
 	dbURL := p.DatabaseURL + " password=" + p.Password
 	db, err := sqlx.Open("pgx", dbURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := db.Ping(); err != nil {
-		return err
+		return nil, err
 	}
 
 	p.Database = db
-	return nil
+	return db, nil
 }
 
 func (p *PostgresDB) ClosePostgresDB() {
