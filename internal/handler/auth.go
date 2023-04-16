@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/soldiii/diplom/internal/model"
@@ -23,7 +22,8 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			return
 		}
 
-		fmt.Print(id)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
 	}
 }
 

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/soldiii/diplom/internal/model"
 	"github.com/soldiii/diplom/internal/repository"
 	"golang.org/x/crypto/bcrypt"
@@ -20,6 +22,7 @@ func (s *AuthService) CreateUser(user *model.User) (int, error) {
 		return 0, err
 	}
 	user.EncryptedPassword = password
+	user.RegistrationDateTime = time.Now()
 
 	return s.repo.CreateUser(user)
 }
