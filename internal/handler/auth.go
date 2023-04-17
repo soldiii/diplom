@@ -9,6 +9,7 @@ import (
 
 func (h *Handler) HandleSignUp() http.HandlerFunc {
 	var user model.User
+	var id int
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
@@ -16,9 +17,24 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			return
 		}
 
-		id, err := h.services.Authorization.CreateUser(&user)
-		if err != nil {
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+		if user.Role == "agent" || user.Role == "Agent" {
+			var agent model.Agent
+			var err error
+			id, err = h.services.Authorization.CreateAgent(&user, &agent)
+			if err != nil {
+				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+		} else if user.Role == "supervisor" || user.Role == "Supervisor" {
+			var supervisor model.Supervisor
+			var err error
+			id, err = h.services.Authorization.CreateSupervisor(&user, &supervisor)
+			if err != nil {
+				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+		} else {
+			NewErrorResponse(w, http.StatusInternalServerError, "роль пользователя должна быть либо \"agent\", либо \"supervisor\"")
 			return
 		}
 

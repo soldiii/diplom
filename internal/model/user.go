@@ -11,4 +11,5 @@ type User struct {
 	RegistrationDateTime time.Time `json:"reg_date_time"`
 	EncryptedPassword    string    `json:"encrypted_password"`
 	Role                 string    `json:"role"`
+	SupervisorID         int       `json:"supervisor_id"`
 }

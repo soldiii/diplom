@@ -16,15 +16,34 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user *model.User) (int, error) {
+func SetUser(user *model.User) error {
 	password, err := GeneratePasswordHash(user.EncryptedPassword)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	user.EncryptedPassword = password
 	user.RegistrationDateTime = time.Now()
+	return nil
+}
 
-	return s.repo.CreateUser(user)
+func (s *AuthService) CreateAgent(user *model.User, agent *model.Agent) (int, error) {
+	if err := SetUser(user); err != nil {
+		return 0, err
+	}
+	agent.SupervisorID = user.SupervisorID
+
+	return s.repo.CreateAgent(user, agent)
+}
+
+func (s *AuthService) CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error) {
+	if err := SetUser(user); err != nil {
+		return 0, err
+	}
+	initials := user.Surname + " " + string(user.Name[0]) + ". " + string(user.Patronymic[0]) + "."
+	supervisor.SupervisorInitials = initials
+	user.SupervisorID = 0
+
+	return s.repo.CreateSupervisor(user, supervisor)
 }
 
 func GeneratePasswordHash(password string) (string, error) {
