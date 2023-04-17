@@ -55,3 +55,11 @@ func GeneratePasswordHash(password string) (string, error) {
 	hash := string(hashedBytes[:])
 	return hash, nil
 }
+
+func (s *AuthService) GetAllSupervisors() ([]*model.Supervisor, error) {
+	return s.repo.GetAllSupervisors()
+}
+
+func (s *AuthService) GenerateToken(email, password string) (string, error) {
+	return "", nil
+}

@@ -43,12 +43,40 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 	}
 }
 
-func (h *Handler) HandleSignIn() http.HandlerFunc {
-
-	return nil
+type signInInput struct {
+	Email             string `json:"email"`
+	EncryptedPassword string `json:"encrypted_password"`
 }
 
-func (h *Handler) HandleGetUserById() http.HandlerFunc {
+func (h *Handler) HandleSignIn() http.HandlerFunc {
+	var input signInInput
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			NewErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		token, err := h.services.Authorization.GenerateToken(input.Email, input.EncryptedPassword)
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
-	return nil
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{"token": token})
+	}
+}
+
+func (h *Handler) HandleGetAllSupervisors() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, _ *http.Request) {
+
+		supervisors, err := h.services.Authorization.GetAllSupervisors()
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(supervisors)
+	}
 }

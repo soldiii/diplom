@@ -33,6 +33,8 @@ func main() {
 
 	serv := server.NewServer(servConfig)
 
+	defer serv.PostgresDB.ClosePostgresDB()
+
 	if err := serv.RunServer(); err != nil {
 		logrus.Fatalf("Running server error: %s", err.Error())
 	}

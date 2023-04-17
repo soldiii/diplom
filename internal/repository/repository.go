@@ -8,6 +8,7 @@ import (
 type Authorization interface {
 	CreateAgent(user *model.User, agent *model.Agent) (int, error)
 	CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error)
+	GetAllSupervisors() ([]*model.Supervisor, error)
 }
 
 type Repository struct {
