@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    build: ./
+    ports:
+      - 8080:8080
+    depends_on:
+      - database
+    environment:
+      - PGUSER=${DB_USER?database user not set}
+      - PGPASSWORD=${DB_PASSWORD:?database password not set}
+      - PGHOST=${DB_HOST:?database host not set}
+      - PGPORT=${DB_PORT?database port not set}
+      - PGNAME=${DB_NAME?database name not set}
+  
+  database:
+    image: postgres:latest
+    hostname: database
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data
+volumes:
+  postgres:
+

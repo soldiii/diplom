@@ -60,7 +60,8 @@ func (srv *Server) ConfigureRouter(service *service.Service) {
 }
 
 func (srv *Server) ConfigurePostgresDB() (*sqlx.DB, error) {
-	db := repository.NewPostgresDB(srv.Config.DatabaseURL)
+	databaseURL := repository.NewDatabaseURL()
+	db := repository.NewPostgresDB(databaseURL)
 	sqdb, err := db.OpenPostgresDB()
 	if err != nil {
 		return nil, err
