@@ -21,6 +21,7 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			var agent model.Agent
 			var err error
 			id, err = h.services.Authorization.CreateAgent(&user, &agent)
+			user.SupervisorID = ""
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
@@ -29,6 +30,7 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			var supervisor model.Supervisor
 			var err error
 			id, err = h.services.Authorization.CreateSupervisor(&user, &supervisor)
+			user.SupervisorID = ""
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
@@ -40,6 +42,9 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
+		/*if err := service.SendEmailAboutRegistration(user.Email); err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+		}*/
 	}
 }
 

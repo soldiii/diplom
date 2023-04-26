@@ -7,8 +7,7 @@ CREATE TABLE users
     patronymic varchar(30),
     reg_date_time timestamp not null,
     encrypted_password varchar(100) not null,
-    role varchar(12) not null,
-    supervisor_id serial
+    role varchar(12) not null
 );
 
 CREATE TABLE supervisors

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+	"strconv"
 	"time"
 
 	"github.com/soldiii/diplom/internal/model"
@@ -27,21 +29,33 @@ func SetUser(user *model.User) error {
 }
 
 func (s *AuthService) CreateAgent(user *model.User, agent *model.Agent) (int, error) {
+	if user.SupervisorID == "" {
+		err := errors.New("необходимо ввести id супервайзера")
+		return 0, err
+	}
 	if err := SetUser(user); err != nil {
 		return 0, err
 	}
-	agent.SupervisorID = user.SupervisorID
+
+	sup_id, err := strconv.Atoi(user.SupervisorID)
+	if err != nil {
+		return 0, err
+	}
+	agent.SupervisorID = sup_id
 
 	return s.repo.CreateAgent(user, agent)
 }
 
 func (s *AuthService) CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error) {
+	if user.SupervisorID != "" {
+		err := errors.New("вводить id супервайзера при регистрации не нужно")
+		return 0, err
+	}
 	if err := SetUser(user); err != nil {
 		return 0, err
 	}
-	initials := user.Surname + " " + string(user.Name[0]) + ". " + string(user.Patronymic[0]) + "."
+	initials := user.Surname + " " + string([]rune(user.Name)[0:1]) + ". " + string([]rune(user.Patronymic)[0:1]) + "."
 	supervisor.SupervisorInitials = initials
-	user.SupervisorID = 0
 
 	return s.repo.CreateSupervisor(user, supervisor)
 }
