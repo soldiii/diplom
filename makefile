@@ -1,13 +1,19 @@
 .PHONY: build
 build:
+	go build -v ./cmd/main.go
+
+build-docker:
 	docker-compose build app
 
 run:
+	./main.exe
+
+run-docker:
 	docker-compose up app
 
 migrate-up: 
-	docker-compose run -v C:\Users\malax\OneDrive\Рабочий\стол\diplom\migrations:/migrations --network host migrate/migrate -path ./migrations -database "postgresql://postgres:postgres@database/supervisor_app_bd?sslmode=disable" 
+	migrate -path migrations -database "postgres://postgres:postgres@localhost/supervisor_app_bd?sslmode=disable" up 
 migrate-down:
-	migrate -path migrations -database "postgres://postgres:postgres@database/supervisor_app_bd?sslmode=disable" down
+	migrate -path migrations -database "postgres://postgres:postgres@localhost/supervisor_app_bd?sslmode=disable" down
 
 

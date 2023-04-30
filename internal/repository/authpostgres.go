@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/soldiii/diplom/internal/model"
@@ -17,10 +18,6 @@ func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
 }
 
 func (r *AuthPostgres) CreateUser(user *model.User) (int, error) {
-	if _, err := r.CheckForEmail(user.Email); err == nil {
-		err = errors.New("пользователь с такой почтой уже существует")
-		return 0, err
-	}
 	var id int
 	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", usersTable)
 	row := r.db.QueryRow(query_usr, user.Email, user.Name, user.Surname, user.Patronymic, user.RegistrationDateTime, user.EncryptedPassword, user.Role)
@@ -30,59 +27,55 @@ func (r *AuthPostgres) CreateUser(user *model.User) (int, error) {
 	return id, nil
 }
 
-func (r *AuthPostgres) CheckForEmail(email string) (bool, error) {
-	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1", usersTable)
+func (r *AuthPostgres) CreateUserTempTable(user *model.UserCode) (int, error) {
+	var id int
+	sup_id, err := strconv.Atoi(user.SupervisorID)
+	if err != nil {
+		return 0, err
+	}
+	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, supervisor_id, initials, code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id", userCodesTable)
+	row := r.db.QueryRow(query_usr, user.Email, user.Name, user.Surname, user.Patronymic, user.RegistrationDateTime, user.EncryptedPassword, user.Role, sup_id, user.SupervisorInitials, user.Code)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (r *AuthPostgres) CheckForEmail(email string) error {
+	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1 UNION ALL SELECT email FROM %s WHERE email = $1", usersTable, userCodesTable)
 	row := r.db.QueryRow(query, email)
 	if err := row.Scan(&email); err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
-
+	return nil
 }
 
-func (r *AuthPostgres) CreateAgent(user *model.User, agent *model.Agent) (int, error) {
-	if _, err := r.CheckForSupervisor(agent.SupervisorID); err != nil {
-		err = errors.New("супервайзер с таким id не существует")
-		return 0, err
-	}
-	id, err := r.CreateUser(user)
-	if err != nil {
-		return 0, err
-	}
-
-	agent.ID = id
-
-	query_ag := fmt.Sprintf("INSERT INTO %s (id, supervisor_id) VALUES ($1, $2)", agentsTable)
-	r.db.QueryRow(query_ag, agent.ID, agent.SupervisorID)
-
-	return id, nil
-}
-
-func (r *AuthPostgres) CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error) {
-	id, err := r.CreateUser(user)
-	if err != nil {
-		return 0, err
-	}
-	supervisor.ID = id
-
-	query_sup := fmt.Sprintf("INSERT INTO %s (id, initials) VALUES ($1, $2)", supervisorsTable)
-	r.db.QueryRow(query_sup, supervisor.ID, supervisor.SupervisorInitials)
-
-	return id, nil
-}
-
-func (r *AuthPostgres) CheckForSupervisor(sup_id int) (bool, error) {
-
+func (r *AuthPostgres) CheckForSupervisor(sup_id int) error {
 	query := fmt.Sprintf("SELECT id FROM %s WHERE id = $1", supervisorsTable)
 	row := r.db.QueryRow(query, sup_id)
 	if err := row.Scan(&sup_id); err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
-
+	return nil
 }
 
 func (r *AuthPostgres) GetAllSupervisors() ([]*model.Supervisor, error) {
+	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s", supervisorsTable)
+	rows_test, err := r.db.Query(query_test)
+	if err != nil {
+		return nil, err
+	}
+	var count int
+	for rows_test.Next() {
+		if err := rows_test.Scan(&count); err != nil {
+			return nil, err
+		}
+	}
+	defer rows_test.Close()
+	if count == 0 {
+		err := errors.New("в базе данных еще нет супервайзеров")
+		return nil, err
+	}
 
 	var supervisors []*model.Supervisor
 	query := fmt.Sprintf("SELECT * FROM %s", supervisorsTable)
@@ -100,4 +93,90 @@ func (r *AuthPostgres) GetAllSupervisors() ([]*model.Supervisor, error) {
 		supervisors = append(supervisors, &supervisor)
 	}
 	return supervisors, nil
+}
+
+func (r *AuthPostgres) GetEmailOfMainSupervisor() (string, error) {
+	var email string
+	query := fmt.Sprintf("SELECT email FROM %s INNER JOIN %s ON users.id=supervisors.id ORDER BY users.reg_date_time ASC LIMIT 1", usersTable, supervisorsTable)
+	row := r.db.QueryRow(query)
+	if err := row.Scan(&email); err != nil {
+		return "", err
+	}
+	return email, nil
+}
+
+func (r *AuthPostgres) GetSupervisorEmailFromID(id int) (string, error) {
+	var email string
+	query := fmt.Sprintf("SELECT email FROM %s INNER JOIN %s ON users.id=supervisors.id WHERE supervisors.id=$1", usersTable, supervisorsTable)
+	row := r.db.QueryRow(query, id)
+	if err := row.Scan(&email); err != nil {
+		return "", err
+	}
+	return email, nil
+}
+
+func (r *AuthPostgres) IsDBHaveMainSupervisor() (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT(SELECT count(*) FROM %s)=0", supervisorsTable)
+	row := r.db.QueryRow(query)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+
+	return !flag, nil
+}
+
+func (r *AuthPostgres) CreateMainSupervisor(user *model.User, supervisor *model.Supervisor) (int, error) {
+	id, err := r.CreateUser(user)
+	if err != nil {
+		return 0, err
+	}
+	supervisor.ID = id
+	query_sup := fmt.Sprintf("INSERT INTO %s (id, initials) VALUES ($1, $2)", supervisorsTable)
+	r.db.QueryRow(query_sup, supervisor.ID, supervisor.SupervisorInitials)
+	return id, nil
+}
+
+func (r *AuthPostgres) CompareRegistrationCodes(email string, code string) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT CASE WHEN code = $2 THEN 1 ELSE 0 END as result FROM %s WHERE email = $1", userCodesTable)
+	row := r.db.QueryRow(query, email, code)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
+	var role string
+	query := fmt.Sprintf("SELECT role FROM %s WHERE email = $1", userCodesTable)
+	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&role); err != nil {
+		return 0, err
+	}
+	var id int
+	switch role {
+	case "agent", "Agent":
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s RETURNING id", usersTable, userCodesTable)
+		row := r.db.QueryRow(queryUser)
+		if err := row.Scan(&id); err != nil {
+			return 0, err
+		}
+		queryAgent := fmt.Sprintf("INSERT INTO %s (id, supervisor_id) SELECT users.id, usercodes.supervisor_id FROM %s JOIN users ON users.email = usercodes.email", agentsTable, userCodesTable)
+		r.db.QueryRow(queryAgent)
+	case "supervisor", "Supervisor":
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s RETURNING id", usersTable, userCodesTable)
+		row := r.db.QueryRow(queryUser)
+		if err := row.Scan(&id); err != nil {
+			return 0, err
+		}
+		queryAgent := fmt.Sprintf("INSERT INTO %s (id, initials) SELECT users.id, usercodes.initials FROM %s JOIN %s ON users.email = usercodes.email", supervisorsTable, userCodesTable, usersTable)
+		r.db.QueryRow(queryAgent)
+	}
+	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE email = $1", userCodesTable)
+	r.db.QueryRow(deleteQuery, email)
+	return id, nil
 }

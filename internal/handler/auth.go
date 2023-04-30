@@ -2,13 +2,42 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/soldiii/diplom/internal/model"
 )
 
+type checkCode struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
+
+	var checkCodeStruct checkCode
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&checkCodeStruct); err != nil {
+			NewErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		id, err := h.services.Authorization.CompareRegistrationCodes(checkCodeStruct.Email, checkCodeStruct.Code)
+		if err != nil {
+			if err.Error() == "коды не совпадают" {
+				NewErrorResponse(w, http.StatusConflict, err.Error())
+				return
+			}
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
+	}
+}
+
 func (h *Handler) HandleSignUp() http.HandlerFunc {
-	var user model.User
+	var user model.UserCode
 	var id int
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -18,33 +47,42 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 		}
 
 		if user.Role == "agent" || user.Role == "Agent" {
-			var agent model.Agent
 			var err error
-			id, err = h.services.Authorization.CreateAgent(&user, &agent)
+			if user.SupervisorID == "" {
+				err := errors.New("необходимо ввести id супервайзера")
+				NewErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			id, err = h.services.Authorization.CreateAgent(&user)
 			user.SupervisorID = ""
 			if err != nil {
+				if err.Error() == "почта уже используется" {
+					NewErrorResponse(w, http.StatusConflict, err.Error())
+					return
+				}
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		} else if user.Role == "supervisor" || user.Role == "Supervisor" {
-			var supervisor model.Supervisor
 			var err error
-			id, err = h.services.Authorization.CreateSupervisor(&user, &supervisor)
+			if user.SupervisorID != "" {
+				err := errors.New("вводить id супервайзера при регистрации не нужно")
+				NewErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			id, err = h.services.Authorization.CreateSupervisor(&user)
 			user.SupervisorID = ""
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		} else {
-			NewErrorResponse(w, http.StatusInternalServerError, "роль пользователя должна быть либо \"agent\", либо \"supervisor\"")
+			NewErrorResponse(w, http.StatusBadRequest, "роль пользователя должна быть либо \"agent\", либо \"supervisor\"")
 			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
-		/*if err := service.SendEmailAboutRegistration(user.Email); err != nil {
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
-		}*/
 	}
 }
 
@@ -77,6 +115,11 @@ func (h *Handler) HandleGetAllSupervisors() http.HandlerFunc {
 
 		supervisors, err := h.services.Authorization.GetAllSupervisors()
 		if err != nil {
+			if err.Error() == "в базе данных еще нет супервайзеров" {
+				NewErrorResponse(w, http.StatusConflict, err.Error())
+				return
+			}
+
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}

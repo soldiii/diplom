@@ -11,14 +11,21 @@ import (
 )
 
 type AuthService struct {
-	repo repository.Authorization
+	repo         repository.Authorization
+	emailService *EmailService
 }
 
 func NewAuthService(repo repository.Authorization) *AuthService {
-	return &AuthService{repo: repo}
+	return &AuthService{repo: repo, emailService: NewEmailService()}
 }
 
-func SetUser(user *model.User) error {
+func (s *AuthService) SetAndCheckUser(user *model.UserCode) error {
+
+	if err := s.repo.CheckForEmail(user.Email); err == nil {
+		err = errors.New("почта уже используется")
+		return err
+	}
+
 	password, err := GeneratePasswordHash(user.EncryptedPassword)
 	if err != nil {
 		return err
@@ -28,12 +35,8 @@ func SetUser(user *model.User) error {
 	return nil
 }
 
-func (s *AuthService) CreateAgent(user *model.User, agent *model.Agent) (int, error) {
-	if user.SupervisorID == "" {
-		err := errors.New("необходимо ввести id супервайзера")
-		return 0, err
-	}
-	if err := SetUser(user); err != nil {
+func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
+	if err := s.SetAndCheckUser(user); err != nil {
 		return 0, err
 	}
 
@@ -41,23 +44,82 @@ func (s *AuthService) CreateAgent(user *model.User, agent *model.Agent) (int, er
 	if err != nil {
 		return 0, err
 	}
-	agent.SupervisorID = sup_id
 
-	return s.repo.CreateAgent(user, agent)
+	if err := s.repo.CheckForSupervisor(sup_id); err != nil {
+		err = errors.New("супервайзер с таким id не существует")
+		return 0, err
+	}
+
+	code := s.emailService.GenerateCode()
+	user.Code = code
+
+	sup_id, err = strconv.Atoi(user.SupervisorID)
+	if err != nil {
+		return 0, err
+	}
+
+	emailSupervisor, err := s.repo.GetSupervisorEmailFromID(sup_id)
+	if err != nil {
+		return 0, err
+	}
+
+	s.emailService.SendEmailToSupervisor(emailSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, code)
+
+	return s.repo.CreateUserTempTable(user)
 }
 
-func (s *AuthService) CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error) {
-	if user.SupervisorID != "" {
-		err := errors.New("вводить id супервайзера при регистрации не нужно")
+func (s *AuthService) CreateSupervisor(user *model.UserCode) (int, error) {
+	var mainSuper model.Supervisor
+	if err := s.SetAndCheckUser(user); err != nil {
 		return 0, err
 	}
-	if err := SetUser(user); err != nil {
-		return 0, err
-	}
-	initials := user.Surname + " " + string([]rune(user.Name)[0:1]) + ". " + string([]rune(user.Patronymic)[0:1]) + "."
-	supervisor.SupervisorInitials = initials
 
-	return s.repo.CreateSupervisor(user, supervisor)
+	initials := user.Surname + " " + string([]rune(user.Name)[0:1]) + ". " + string([]rune(user.Patronymic)[0:1]) + "."
+	user.SupervisorInitials = initials
+
+	flag, err := s.repo.IsDBHaveMainSupervisor()
+	if err != nil {
+		return 0, err
+	}
+
+	if !flag {
+		var userT model.User
+		mainSuper.SupervisorInitials = initials
+		userT.Name = user.Name
+		userT.Surname = user.Surname
+		userT.Patronymic = user.Patronymic
+		userT.Email = user.Email
+		userT.EncryptedPassword = user.EncryptedPassword
+		userT.RegistrationDateTime = user.RegistrationDateTime
+		userT.Role = user.Role
+
+		return s.repo.CreateMainSupervisor(&userT, &mainSuper)
+	}
+
+	emailMainSupervisor, err := s.repo.GetEmailOfMainSupervisor()
+	if err != nil {
+		return 0, err
+	}
+
+	user.SupervisorID = "0"
+	code := s.emailService.GenerateCode()
+	user.Code = code
+	s.emailService.SendEmailToMainSupervisor(emailMainSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, code)
+
+	return s.repo.CreateUserTempTable(user)
+}
+
+func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, error) {
+	result, err := s.repo.CompareRegistrationCodes(email, code)
+	if err != nil {
+		return 0, err
+	}
+	if !result {
+		err = errors.New("коды не совпадают")
+		return 0, err
+	}
+	s.emailService.SendEmailToRegistratedUser(email)
+	return s.repo.MigrateFromTemporaryTable(email)
 }
 
 func GeneratePasswordHash(password string) (string, error) {

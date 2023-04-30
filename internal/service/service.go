@@ -6,9 +6,10 @@ import (
 )
 
 type Authorization interface {
-	CreateAgent(user *model.User, agent *model.Agent) (int, error)
-	CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error)
+	CreateAgent(user *model.UserCode) (int, error)
+	CreateSupervisor(user *model.UserCode) (int, error)
 	GetAllSupervisors() ([]*model.Supervisor, error)
+	CompareRegistrationCodes(email string, code string) (int, error)
 	GenerateToken(email, password string) (string, error)
 }
 
@@ -17,7 +18,5 @@ type Service struct {
 }
 
 func NewService(repos *repository.Repository) *Service {
-	return &Service{
-		Authorization: NewAuthService(repos.Authorization),
-	}
+	return &Service{Authorization: NewAuthService(repos.Authorization)}
 }

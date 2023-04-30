@@ -6,8 +6,15 @@ import (
 )
 
 type Authorization interface {
-	CreateAgent(user *model.User, agent *model.Agent) (int, error)
-	CreateSupervisor(user *model.User, supervisor *model.Supervisor) (int, error)
+	CheckForEmail(email string) error
+	CheckForSupervisor(id int) error
+	CreateUserTempTable(user *model.UserCode) (int, error)
+	GetEmailOfMainSupervisor() (string, error)
+	GetSupervisorEmailFromID(id int) (string, error)
+	IsDBHaveMainSupervisor() (bool, error)
+	CreateMainSupervisor(user *model.User, supervisor *model.Supervisor) (int, error)
+	CompareRegistrationCodes(email string, code string) (bool, error)
+	MigrateFromTemporaryTable(email string) (int, error)
 	GetAllSupervisors() ([]*model.Supervisor, error)
 }
 
