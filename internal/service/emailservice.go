@@ -33,7 +33,7 @@ func (e *EmailService) SendEmailToMainSupervisor(to string, supervisor_email str
 
 	m.SetHeader("Subject", "Регистрация супервайзера")
 
-	text := fmt.Sprintf("Необходимо ваше подтверждение для регистрации супервайзера: %s %s %s, c адресом электронной почты: %s.\nСообщите ему следующий код, если вы подтверждаете регистрацию: %s.", patronymic, name, surname, supervisor_email, code)
+	text := fmt.Sprintf("Необходимо ваше подтверждение для регистрации супервайзера: %s %s %s, c адресом электронной почты: %s.\nСообщите ему следующий код, если вы подтверждаете регистрацию: %s.", surname, name, patronymic, supervisor_email, code)
 	m.SetBody("text/plain", text)
 
 	port, err := strconv.Atoi(e.Port)
@@ -56,7 +56,7 @@ func (e *EmailService) SendEmailToSupervisor(to string, agent_email string, name
 
 	m.SetHeader("Subject", "Регистрация агента")
 
-	text := fmt.Sprintf("Необходимо ваше подтверждение для регистрации агента: %s %s %s, c адресом электронной почты: %s.\nСообщите ему следующий код, если вы подтверждаете регистрацию: %s.", patronymic, name, surname, agent_email, code)
+	text := fmt.Sprintf("Необходимо ваше подтверждение для регистрации агента: %s %s %s, c адресом электронной почты: %s.\nСообщите ему следующий код, если вы подтверждаете регистрацию: %s.", surname, name, patronymic, agent_email, code)
 	m.SetBody("text/plain", text)
 
 	port, err := strconv.Atoi(e.Port)

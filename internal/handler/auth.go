@@ -46,7 +46,8 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			return
 		}
 
-		if user.Role == "agent" || user.Role == "Agent" {
+		switch user.Role {
+		case "agent", "Agent":
 			var err error
 			if user.SupervisorID == "" {
 				err := errors.New("необходимо ввести id супервайзера")
@@ -63,7 +64,7 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-		} else if user.Role == "supervisor" || user.Role == "Supervisor" {
+		case "supervisor", "Supervisor":
 			var err error
 			if user.SupervisorID != "" {
 				err := errors.New("вводить id супервайзера при регистрации не нужно")
@@ -73,14 +74,17 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 			id, err = h.services.Authorization.CreateSupervisor(&user)
 			user.SupervisorID = ""
 			if err != nil {
+				if err.Error() == "почта уже используется" {
+					NewErrorResponse(w, http.StatusConflict, err.Error())
+					return
+				}
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-		} else {
+		default:
 			NewErrorResponse(w, http.StatusBadRequest, "роль пользователя должна быть либо \"agent\", либо \"supervisor\"")
 			return
 		}
-
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
 	}
