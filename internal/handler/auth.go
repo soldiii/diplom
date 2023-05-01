@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/sirupsen/logrus"
 	"github.com/soldiii/diplom/internal/model"
 )
 
@@ -24,8 +25,13 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 		}
 		id, err := h.services.Authorization.CompareRegistrationCodes(checkCodeStruct.Email, checkCodeStruct.Code)
 		if err != nil {
-			if err.Error() == "коды не совпадают" {
-				NewErrorResponse(w, http.StatusConflict, err.Error())
+			if err.Error() == "неверный код" || err.Error() == "превышен лимит количества попыток" {
+				logrus.Error(err.Error())
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{"attempt_number": id, "message": err.Error()})
+				return
+			} else if err.Error() == "время регистрации истекло" {
+				NewErrorResponse(w, http.StatusUnauthorized, err.Error())
 				return
 			}
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())

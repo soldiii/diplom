@@ -11,6 +11,7 @@ type Authorization interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
 	CompareRegistrationCodes(email string, code string) (int, error)
 	GenerateToken(email, password string) (string, error)
+	IsTimeExpired(email string) (bool, error)
 }
 
 type Service struct {

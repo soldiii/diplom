@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"time"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/soldiii/diplom/internal/model"
 )
@@ -33,8 +35,8 @@ func (r *AuthPostgres) CreateUserTempTable(user *model.UserCode) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, supervisor_id, initials, code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id", userCodesTable)
-	row := r.db.QueryRow(query_usr, user.Email, user.Name, user.Surname, user.Patronymic, user.RegistrationDateTime, user.EncryptedPassword, user.Role, sup_id, user.SupervisorInitials, user.Code)
+	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, supervisor_id, initials, code, attempt_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id", userCodesTable)
+	row := r.db.QueryRow(query_usr, user.Email, user.Name, user.Surname, user.Patronymic, user.RegistrationDateTime, user.EncryptedPassword, user.Role, sup_id, user.SupervisorInitials, user.Code, user.AttemptNumber)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
@@ -137,7 +139,7 @@ func (r *AuthPostgres) CreateMainSupervisor(user *model.User, supervisor *model.
 	return id, nil
 }
 
-func (r *AuthPostgres) CompareRegistrationCodes(email string, code string) (bool, error) {
+func (r *AuthPostgres) IsRegistrationCodeValid(email string, code string) (bool, error) {
 	var flag bool
 	query := fmt.Sprintf("SELECT CASE WHEN code = $2 THEN 1 ELSE 0 END as result FROM %s WHERE email = $1", userCodesTable)
 	row := r.db.QueryRow(query, email, code)
@@ -148,6 +150,21 @@ func (r *AuthPostgres) CompareRegistrationCodes(email string, code string) (bool
 		return false, nil
 	}
 	return true, nil
+}
+
+func (r *AuthPostgres) GetAttemptNumber(email string) (int, error) {
+	var attemptNumber int
+	getQuery := fmt.Sprintf("SELECT attempt_number FROM %s WHERE email = $1", userCodesTable)
+	row := r.db.QueryRow(getQuery, email)
+	if err := row.Scan(&attemptNumber); err != nil {
+		return 0, err
+	}
+	return attemptNumber, nil
+}
+
+func (r *AuthPostgres) IncrementAttemptNumberByEmail(email string) {
+	updateQuery := fmt.Sprintf("UPDATE %s SET attempt_number = attempt_number + 1 WHERE email = $1", userCodesTable)
+	r.db.QueryRow(updateQuery, email)
 }
 
 func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
@@ -176,7 +193,21 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 		queryAgent := fmt.Sprintf("INSERT INTO %s (id, initials) SELECT users.id, usercodes.initials FROM %s JOIN %s ON users.email = usercodes.email", supervisorsTable, userCodesTable, usersTable)
 		r.db.QueryRow(queryAgent)
 	}
+	r.DeleteFromTempTableByEmail(email)
+	return id, nil
+}
+
+func (r *AuthPostgres) GetRegistrationTime(email string) (time.Time, error) {
+	var regDateTime time.Time
+	timeQuery := fmt.Sprintf("SELECT reg_date_time FROM %s WHERE email = $1", userCodesTable)
+	row := r.db.QueryRow(timeQuery, email)
+	if err := row.Scan(&regDateTime); err != nil {
+		return time.Now(), err
+	}
+	return regDateTime, nil
+}
+
+func (r *AuthPostgres) DeleteFromTempTableByEmail(email string) {
 	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE email = $1", userCodesTable)
 	r.db.QueryRow(deleteQuery, email)
-	return id, nil
 }

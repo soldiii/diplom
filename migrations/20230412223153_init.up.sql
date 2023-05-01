@@ -34,5 +34,6 @@ CREATE TABLE usercodes
     role varchar(12) not null,
     supervisor_id serial,
     initials varchar(30) not null,
-    code varchar(6) not null
+    code varchar(6) not null,
+    attempt_number serial not null
 );

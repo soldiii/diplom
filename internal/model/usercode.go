@@ -14,4 +14,5 @@ type UserCode struct {
 	Role                 string `json:"role"`
 	SupervisorID         string `json:"supervisor_id"`
 	SupervisorInitials   string
+	AttemptNumber        int
 }

@@ -10,6 +10,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	NumberOfAttemptsForCodeEntry = 3
+	CodeEntryTimeInMinutes       = 5
+)
+
 type AuthService struct {
 	repo         repository.Authorization
 	emailService *EmailService
@@ -32,6 +37,7 @@ func (s *AuthService) SetAndCheckUser(user *model.UserCode) error {
 	}
 	user.EncryptedPassword = password
 	user.RegistrationDateTime = time.Now()
+	user.AttemptNumber = 1
 	return nil
 }
 
@@ -110,16 +116,48 @@ func (s *AuthService) CreateSupervisor(user *model.UserCode) (int, error) {
 }
 
 func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, error) {
-	result, err := s.repo.CompareRegistrationCodes(email, code)
+	timeFlag, err := s.IsTimeExpired(email)
+	if err != nil {
+		return 0, err
+	}
+	if timeFlag {
+		err = errors.New("время регистрации истекло")
+		return 0, err
+	}
+	result, err := s.repo.IsRegistrationCodeValid(email, code)
 	if err != nil {
 		return 0, err
 	}
 	if !result {
-		err = errors.New("коды не совпадают")
-		return 0, err
+		attemptNumber, err := s.repo.GetAttemptNumber(email)
+		if err != nil {
+			return 0, err
+		}
+		if attemptNumber == NumberOfAttemptsForCodeEntry {
+			s.repo.DeleteFromTempTableByEmail(email)
+			err = errors.New("превышен лимит количества попыток")
+		} else {
+			s.repo.IncrementAttemptNumberByEmail(email)
+			err = errors.New("неверный код")
+		}
+		return attemptNumber, err
 	}
 	s.emailService.SendEmailToRegistratedUser(email)
 	return s.repo.MigrateFromTemporaryTable(email)
+}
+
+func (s *AuthService) IsTimeExpired(email string) (bool, error) {
+	regDateTime, err := s.repo.GetRegistrationTime(email)
+	if err != nil {
+		return false, err
+	}
+	regTimeInMinutes := regDateTime.Unix() / 60
+	timeNowInMinutes := time.Now().Unix() / 60
+	if timeNowInMinutes-regTimeInMinutes > CodeEntryTimeInMinutes {
+		s.repo.DeleteFromTempTableByEmail(email)
+		return true, nil
+	}
+	return false, nil
 }
 
 func GeneratePasswordHash(password string) (string, error) {
