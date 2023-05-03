@@ -25,28 +25,37 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 		}
 		id, err := h.services.Authorization.CompareRegistrationCodes(checkCodeStruct.Email, checkCodeStruct.Code)
 		if err != nil {
-			if err.Error() == "неверный код" || err.Error() == "превышен лимит количества попыток" {
+			switch err.Error() {
+			case "неверный код", "превышен лимит количества попыток":
+				attemptNumber := id
 				logrus.Error(err.Error())
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]interface{}{"attempt_number": id, "message": err.Error()})
+				json.NewEncoder(w).Encode(map[string]interface{}{"attempt_number": attemptNumber, "message": err.Error()})
 				return
-			} else if err.Error() == "время регистрации истекло" {
+			case "время регистрации истекло":
 				NewErrorResponse(w, http.StatusUnauthorized, err.Error())
 				return
+			default:
+				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+				return
 			}
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
-			return
 		}
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
 	}
 }
 
+var zeroUser = &model.UserCode{}
+
+func ResetUser(user *model.UserCode) {
+	*user = *zeroUser
+}
+
 func (h *Handler) HandleSignUp() http.HandlerFunc {
 	var user model.UserCode
-	var id int
-
 	return func(w http.ResponseWriter, r *http.Request) {
+		ResetUser(&user)
+		var id int
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			NewErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -61,7 +70,6 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 				return
 			}
 			id, err = h.services.Authorization.CreateAgent(&user)
-			user.SupervisorID = ""
 			if err != nil {
 				if err.Error() == "почта уже используется" {
 					NewErrorResponse(w, http.StatusConflict, err.Error())
@@ -78,7 +86,6 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 				return
 			}
 			id, err = h.services.Authorization.CreateSupervisor(&user)
-			user.SupervisorID = ""
 			if err != nil {
 				if err.Error() == "почта уже используется" {
 					NewErrorResponse(w, http.StatusConflict, err.Error())

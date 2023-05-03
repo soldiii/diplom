@@ -9,6 +9,9 @@ import (
 
 type Authorization interface {
 	CheckForEmail(email string) error
+	IsTempTableHaveUser(email string) (bool, error)
+	GetAttemptNumberByEmail(email string) (int, error)
+	GetCodeByEmail(email string) (string, error)
 	CheckForSupervisor(id int) error
 	CreateUserTempTable(user *model.UserCode) (int, error)
 	GetEmailOfMainSupervisor() (string, error)
@@ -16,10 +19,10 @@ type Authorization interface {
 	IsDBHaveMainSupervisor() (bool, error)
 	CreateMainSupervisor(user *model.User, supervisor *model.Supervisor) (int, error)
 	IsRegistrationCodeValid(email string, code string) (bool, error)
-	GetAttemptNumber(email string) (int, error)
 	MigrateFromTemporaryTable(email string) (int, error)
 	GetAllSupervisors() ([]*model.Supervisor, error)
-	GetRegistrationTime(email string) (time.Time, error)
+	GetRegistrationTimeByEmail(email string) (time.Time, error)
+	GetUsersEmailsWithExpiredTime(time.Time, int64) ([]string, error)
 	DeleteFromTempTableByEmail(email string)
 	IncrementAttemptNumberByEmail(email string)
 }

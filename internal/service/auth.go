@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	NumberOfAttemptsForCodeEntry = 3
-	CodeEntryTimeInMinutes       = 5
+	NUMBER_ATTEMPTS                  = 3
+	CODE_ENTRY_TIME_IN_MINUTES int64 = 5
 )
 
 type AuthService struct {
@@ -24,25 +24,75 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo, emailService: NewEmailService()}
 }
 
-func (s *AuthService) SetAndCheckUser(user *model.UserCode) error {
-
+func (s *AuthService) SetUser(user *model.UserCode) (bool, error) {
 	if err := s.repo.CheckForEmail(user.Email); err == nil {
 		err = errors.New("почта уже используется")
-		return err
+		return false, err
 	}
 
-	password, err := GeneratePasswordHash(user.EncryptedPassword)
+	flag, err := s.repo.IsTempTableHaveUser(user.Email)
 	if err != nil {
-		return err
+		return false, err
 	}
-	user.EncryptedPassword = password
-	user.RegistrationDateTime = time.Now()
-	user.AttemptNumber = 1
-	return nil
+	if flag {
+		timeFlag, err := s.IsTimeExpired(user.Email)
+		if err != nil {
+			return false, err
+		}
+		if timeFlag {
+			err = errors.New("время регистрации истекло")
+			if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+				return false, err
+			}
+			return false, err
+		}
+		attNumber, err := s.repo.GetAttemptNumberByEmail(user.Email)
+		if err != nil {
+			return false, err
+		}
+		code, err := s.repo.GetCodeByEmail(user.Email)
+		if err != nil {
+			return false, err
+		}
+		dateTime, err := s.repo.GetRegistrationTimeByEmail(user.Email)
+		if err != nil {
+			return false, err
+		}
+		user.RegistrationDateTime = dateTime
+		user.Code = code
+		user.AttemptNumber = attNumber
+		password, err := GeneratePasswordHash(user.EncryptedPassword)
+		if err != nil {
+			return false, err
+		}
+		user.EncryptedPassword = password
+		s.repo.DeleteFromTempTableByEmail(user.Email)
+		if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+			return false, err
+		}
+	} else {
+		code := s.emailService.GenerateCode()
+		user.Code = code
+		user.AttemptNumber = 1
+		user.RegistrationDateTime = time.Now()
+		password, err := GeneratePasswordHash(user.EncryptedPassword)
+		if err != nil {
+			return false, err
+		}
+		user.EncryptedPassword = password
+		if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
-	if err := s.SetAndCheckUser(user); err != nil {
+	user.SupervisorInitials = "NOT SUPERVISOR"
+	emailFlag, err := s.SetUser(user)
+	if err != nil {
 		return 0, err
 	}
 
@@ -56,27 +106,22 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 		return 0, err
 	}
 
-	code := s.emailService.GenerateCode()
-	user.Code = code
-
-	sup_id, err = strconv.Atoi(user.SupervisorID)
-	if err != nil {
-		return 0, err
+	if emailFlag {
+		emailSupervisor, err := s.repo.GetSupervisorEmailFromID(sup_id)
+		if err != nil {
+			return 0, err
+		}
+		s.emailService.SendEmailToSupervisor(emailSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
 	}
-
-	emailSupervisor, err := s.repo.GetSupervisorEmailFromID(sup_id)
-	if err != nil {
-		return 0, err
-	}
-
-	s.emailService.SendEmailToSupervisor(emailSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, code)
 
 	return s.repo.CreateUserTempTable(user)
 }
 
 func (s *AuthService) CreateSupervisor(user *model.UserCode) (int, error) {
+	user.SupervisorID = "0"
 	var mainSuper model.Supervisor
-	if err := s.SetAndCheckUser(user); err != nil {
+	emailFlag, err := s.SetUser(user)
+	if err != nil {
 		return 0, err
 	}
 
@@ -101,26 +146,32 @@ func (s *AuthService) CreateSupervisor(user *model.UserCode) (int, error) {
 
 		return s.repo.CreateMainSupervisor(&userT, &mainSuper)
 	}
-
-	emailMainSupervisor, err := s.repo.GetEmailOfMainSupervisor()
-	if err != nil {
-		return 0, err
+	if emailFlag {
+		emailMainSupervisor, err := s.repo.GetEmailOfMainSupervisor()
+		if err != nil {
+			return 0, err
+		}
+		s.emailService.SendEmailToSupervisor(emailMainSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
 	}
-
-	user.SupervisorID = "0"
-	code := s.emailService.GenerateCode()
-	user.Code = code
-	s.emailService.SendEmailToMainSupervisor(emailMainSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, code)
 
 	return s.repo.CreateUserTempTable(user)
 }
 
 func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, error) {
-	timeFlag, err := s.IsTimeExpired(email)
+	flag, err := s.repo.IsTempTableHaveUser(email)
 	if err != nil {
 		return 0, err
 	}
-	if timeFlag {
+	if flag {
+		timeFlag, err := s.IsTimeExpired(email)
+		if err != nil {
+			return 0, err
+		}
+		if timeFlag {
+			err = errors.New("время регистрации истекло")
+			return 0, err
+		}
+	} else {
 		err = errors.New("время регистрации истекло")
 		return 0, err
 	}
@@ -129,11 +180,11 @@ func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, 
 		return 0, err
 	}
 	if !result {
-		attemptNumber, err := s.repo.GetAttemptNumber(email)
+		attemptNumber, err := s.repo.GetAttemptNumberByEmail(email)
 		if err != nil {
 			return 0, err
 		}
-		if attemptNumber == NumberOfAttemptsForCodeEntry {
+		if attemptNumber == NUMBER_ATTEMPTS {
 			s.repo.DeleteFromTempTableByEmail(email)
 			err = errors.New("превышен лимит количества попыток")
 		} else {
@@ -146,18 +197,49 @@ func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, 
 	return s.repo.MigrateFromTemporaryTable(email)
 }
 
+func TransformTime(dateTime time.Time) (time.Time, error) {
+	loc, err := time.LoadLocation("Asia/Novosibirsk")
+	if err != nil {
+		return time.Now(), err
+	}
+	dateTime = dateTime.In(loc)
+	return dateTime, nil
+}
+
 func (s *AuthService) IsTimeExpired(email string) (bool, error) {
-	regDateTime, err := s.repo.GetRegistrationTime(email)
+	regDateTime, err := s.repo.GetRegistrationTimeByEmail(email)
 	if err != nil {
 		return false, err
 	}
-	regTimeInMinutes := regDateTime.Unix() / 60
-	timeNowInMinutes := time.Now().Unix() / 60
-	if timeNowInMinutes-regTimeInMinutes > CodeEntryTimeInMinutes {
+	regTime, err := TransformTime(regDateTime)
+	if err != nil {
+		return false, err
+	}
+	timeNow, err := TransformTime(time.Now())
+	if err != nil {
+		return false, err
+	}
+	entryTime := CODE_ENTRY_TIME_IN_MINUTES
+	timeNowInMinutes := timeNow.Unix() / 60
+	regTimeInMinutes := (regTime.Unix() - 25200) / 60
+	if timeNowInMinutes-regTimeInMinutes > entryTime {
 		s.repo.DeleteFromTempTableByEmail(email)
 		return true, nil
 	}
 	return false, nil
+}
+
+func (s *AuthService) ClearTempTableFromUsersWithExpiredTime() error {
+	EntryTime := CODE_ENTRY_TIME_IN_MINUTES
+	emails, err := s.repo.GetUsersEmailsWithExpiredTime(time.Now(), EntryTime)
+	if err != nil {
+		return err
+	}
+
+	for _, email := range emails {
+		s.repo.DeleteFromTempTableByEmail(email)
+	}
+	return nil
 }
 
 func GeneratePasswordHash(password string) (string, error) {

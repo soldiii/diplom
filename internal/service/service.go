@@ -12,6 +12,7 @@ type Authorization interface {
 	CompareRegistrationCodes(email string, code string) (int, error)
 	GenerateToken(email, password string) (string, error)
 	IsTimeExpired(email string) (bool, error)
+	ClearTempTableFromUsersWithExpiredTime() error
 }
 
 type Service struct {

@@ -49,7 +49,7 @@ func (e *EmailService) SendEmailToMainSupervisor(to string, supervisor_email str
 	return nil
 }
 
-func (e *EmailService) SendEmailToSupervisor(to string, agent_email string, name string, surname string, patronymic string, code string) error {
+func (e *EmailService) SendEmailToCommonSupervisor(to string, agent_email string, name string, surname string, patronymic string, code string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", e.AccName)
 	m.SetHeader("To", to)
@@ -69,6 +69,20 @@ func (e *EmailService) SendEmailToSupervisor(to string, agent_email string, name
 		return err
 	}
 
+	return nil
+}
+
+func (e *EmailService) SendEmailToSupervisor(to string, email string, name string, surname string, patronymic string, code string, role string) error {
+	switch role {
+	case "supervisor", "Supervisor":
+		if err := e.SendEmailToMainSupervisor(to, email, name, surname, patronymic, code); err != nil {
+			return err
+		}
+	case "agent", "Agent":
+		if err := e.SendEmailToCommonSupervisor(to, email, name, surname, patronymic, code); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

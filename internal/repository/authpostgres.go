@@ -44,7 +44,7 @@ func (r *AuthPostgres) CreateUserTempTable(user *model.UserCode) (int, error) {
 }
 
 func (r *AuthPostgres) CheckForEmail(email string) error {
-	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1 UNION ALL SELECT email FROM %s WHERE email = $1", usersTable, userCodesTable)
+	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1", usersTable)
 	row := r.db.QueryRow(query, email)
 	if err := row.Scan(&email); err != nil {
 		return err
@@ -152,7 +152,7 @@ func (r *AuthPostgres) IsRegistrationCodeValid(email string, code string) (bool,
 	return true, nil
 }
 
-func (r *AuthPostgres) GetAttemptNumber(email string) (int, error) {
+func (r *AuthPostgres) GetAttemptNumberByEmail(email string) (int, error) {
 	var attemptNumber int
 	getQuery := fmt.Sprintf("SELECT attempt_number FROM %s WHERE email = $1", userCodesTable)
 	row := r.db.QueryRow(getQuery, email)
@@ -177,16 +177,16 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	var id int
 	switch role {
 	case "agent", "Agent":
-		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s RETURNING id", usersTable, userCodesTable)
-		row := r.db.QueryRow(queryUser)
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
+		row := r.db.QueryRow(queryUser, email)
 		if err := row.Scan(&id); err != nil {
 			return 0, err
 		}
 		queryAgent := fmt.Sprintf("INSERT INTO %s (id, supervisor_id) SELECT users.id, usercodes.supervisor_id FROM %s JOIN users ON users.email = usercodes.email", agentsTable, userCodesTable)
 		r.db.QueryRow(queryAgent)
 	case "supervisor", "Supervisor":
-		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s RETURNING id", usersTable, userCodesTable)
-		row := r.db.QueryRow(queryUser)
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
+		row := r.db.QueryRow(queryUser, email)
 		if err := row.Scan(&id); err != nil {
 			return 0, err
 		}
@@ -197,7 +197,7 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	return id, nil
 }
 
-func (r *AuthPostgres) GetRegistrationTime(email string) (time.Time, error) {
+func (r *AuthPostgres) GetRegistrationTimeByEmail(email string) (time.Time, error) {
 	var regDateTime time.Time
 	timeQuery := fmt.Sprintf("SELECT reg_date_time FROM %s WHERE email = $1", userCodesTable)
 	row := r.db.QueryRow(timeQuery, email)
@@ -210,4 +210,47 @@ func (r *AuthPostgres) GetRegistrationTime(email string) (time.Time, error) {
 func (r *AuthPostgres) DeleteFromTempTableByEmail(email string) {
 	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE email = $1", userCodesTable)
 	r.db.QueryRow(deleteQuery, email)
+}
+
+func (r *AuthPostgres) GetUsersEmailsWithExpiredTime(timeNow time.Time, entryTime int64) ([]string, error) {
+	var emails []string
+	query := fmt.Sprintf("SELECT email FROM %s WHERE DATE_PART('epoch', $1 - reg_date_time)::int/60 > $2", userCodesTable)
+	rows, err := r.db.Query(query, timeNow, entryTime)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var email string
+		err := rows.Scan(&email)
+		if err != nil {
+			return nil, err
+		}
+		emails = append(emails, email)
+	}
+	return emails, nil
+}
+
+func (r *AuthPostgres) IsTempTableHaveUser(email string) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE email = $1) AS result", userCodesTable)
+	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AuthPostgres) GetCodeByEmail(email string) (string, error) {
+	var code string
+	query := fmt.Sprintf("SELECT code FROM %s WHERE email = $1", userCodesTable)
+	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&code); err != nil {
+		return "", err
+	}
+	return code, nil
 }
