@@ -12,7 +12,7 @@ import (
 
 const (
 	NUMBER_ATTEMPTS                  = 3
-	CODE_ENTRY_TIME_IN_MINUTES int64 = 5
+	CODE_ENTRY_TIME_IN_MINUTES int64 = 1
 )
 
 type AuthService struct {
@@ -40,11 +40,10 @@ func (s *AuthService) SetUser(user *model.UserCode) (bool, error) {
 			return false, err
 		}
 		if timeFlag {
-			err = errors.New("время регистрации истекло")
-			if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+			if err := CreateNewUser(user, s); err != nil {
 				return false, err
 			}
-			return false, err
+			return true, nil
 		}
 		attNumber, err := s.repo.GetAttemptNumberByEmail(user.Email)
 		if err != nil {
@@ -71,22 +70,29 @@ func (s *AuthService) SetUser(user *model.UserCode) (bool, error) {
 			return false, err
 		}
 	} else {
-		code := s.emailService.GenerateCode()
-		user.Code = code
-		user.AttemptNumber = 1
-		user.RegistrationDateTime = time.Now()
-		password, err := GeneratePasswordHash(user.EncryptedPassword)
-		if err != nil {
-			return false, err
-		}
-		user.EncryptedPassword = password
-		if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+		if err := CreateNewUser(user, s); err != nil {
 			return false, err
 		}
 		return true, nil
 	}
 
 	return false, nil
+}
+
+func CreateNewUser(user *model.UserCode, s *AuthService) error {
+	code := s.emailService.GenerateCode()
+	user.Code = code
+	user.AttemptNumber = 1
+	user.RegistrationDateTime = time.Now()
+	password, err := GeneratePasswordHash(user.EncryptedPassword)
+	if err != nil {
+		return err
+	}
+	user.EncryptedPassword = password
+	if err := s.ClearTempTableFromUsersWithExpiredTime(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
@@ -221,7 +227,8 @@ func (s *AuthService) IsTimeExpired(email string) (bool, error) {
 	}
 	entryTime := CODE_ENTRY_TIME_IN_MINUTES
 	timeNowInMinutes := timeNow.Unix() / 60
-	regTimeInMinutes := (regTime.Unix() - 25200) / 60
+	//regTimeInMinutes := (regTime.Unix() - 25200) / 60
+	regTimeInMinutes := regTime.Unix() / 60
 	if timeNowInMinutes-regTimeInMinutes > entryTime {
 		s.repo.DeleteFromTempTableByEmail(email)
 		return true, nil
