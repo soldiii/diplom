@@ -13,6 +13,9 @@ const (
 	agentsTable      = "agents"
 	supervisorsTable = "supervisors"
 	userCodesTable   = "usercodes"
+	adsTable         = "ads"
+	plansTable       = "plans"
+	reportsTable     = "reports"
 )
 
 type DatabaseURL struct {

@@ -16,18 +16,14 @@ func NewHandler(services *service.Service) *Handler {
 func (h *Handler) InitRoutes(router *mux.Router) {
 
 	router.HandleFunc("/auth/sign-up", h.HandleSignUp()).Methods("POST")
-	router.HandleFunc("/info/supervisors", h.HandleGetAllSupervisors()).Methods("GET")
 	router.HandleFunc("/auth/sign-up/check-up", h.HandleRegistrationCode()).Methods("POST")
 	router.HandleFunc("/auth/sign-in", h.HandleSignIn()).Methods("POST")
-	//router.HandleFunc("/users/{id:[0-9]+}", h.HandleGetUserById()).Methods("GET")
-	//router.HandleFunc("/wtf", h.HandleWTF()).Methods("GET")
-}
+	router.HandleFunc("/info/supervisors", h.HandleGetAllSupervisors()).Methods("GET")
+	router.HandleFunc("/info/users/{id:[1-9]+\\d*}/role", h.HandleGetRoleByID()).Methods("GET")
+	router.HandleFunc("/info/agent/{id:[1-9]+\\d*}", h.HandleGetInfoAboutAgent()).Methods("GET")
+	router.HandleFunc("/ad", h.HandleGETAndPOSTAd()).Methods("GET", "POST")
+	router.HandleFunc("/ad/{id:[1-9]+\\d*}", h.HandlePUTAndDELETEAd()).Methods("PUT", "DELETE")
+	router.HandleFunc("/report", h.HandleCreateReport()).Methods("POST")
 
-//test
-/*
-func (h *Handler) HandleWTF() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "WATAFACK")
-	}
+	//router.HandleFunc("/users/{id:[0-9]+}", h.HandleGetUserById()).Methods("GET")
 }
-*/

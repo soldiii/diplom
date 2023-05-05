@@ -37,3 +37,34 @@ CREATE TABLE usercodes
     code varchar(6) not null,
     attempt_number serial not null
 );
+
+CREATE TABLE ads
+(
+    id serial not null primary key,
+    supervisor_id serial references supervisors (id),
+    title varchar(30) not null,
+    text varchar(200) not null 
+);
+
+CREATE TABLE reports
+(
+    id serial not null primary key,
+    agent_id serial references agents (id),
+    internet smallint not null,
+    tv smallint not null,
+    convergent smallint not null,
+    cctv smallint not null,
+    date_time timestamp not null
+);
+
+CREATE TABLE plans
+(
+    id serial not null primary key,
+    supervisor_id serial references supervisors (id),
+    agent_id serial references agents (id),
+    internet smallint not null,
+    tv smallint not null,
+    convergent smallint not null,
+    cctv smallint not null,
+    date_time timestamp not null
+);

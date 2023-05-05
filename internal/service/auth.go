@@ -17,11 +17,14 @@ const (
 
 type AuthService struct {
 	repo         repository.Authorization
+	infoRepo     repository.Information
+	reportRepo   repository.Report
+	planRepo     repository.Plan
 	emailService *EmailService
 }
 
-func NewAuthService(repo repository.Authorization) *AuthService {
-	return &AuthService{repo: repo, emailService: NewEmailService()}
+func NewAuthService(repo repository.Authorization, infoRepo repository.Information, reportRepo repository.Report, planRepo repository.Plan) *AuthService {
+	return &AuthService{repo: repo, infoRepo: infoRepo, emailService: NewEmailService(), reportRepo: reportRepo, planRepo: planRepo}
 }
 
 func (s *AuthService) SetUser(user *model.UserCode) (bool, error) {
@@ -200,7 +203,28 @@ func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, 
 		return attemptNumber, err
 	}
 	s.emailService.SendEmailToRegistratedUser(email)
+
 	return s.repo.MigrateFromTemporaryTable(email)
+}
+
+func (s *AuthService) SetReportAndPlanTables(id int) error {
+	agID := strconv.Itoa(id)
+	sup_id, err := s.infoRepo.GetSupervisorIDByAgentID(agID)
+	if err != nil {
+		return err
+	}
+	if _, err := s.reportRepo.SetReport(id); err != nil {
+		return err
+	}
+	supID, err := strconv.Atoi(sup_id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.planRepo.SetPlan(supID, id); err != nil {
+		return err
+	}
+	return nil
 }
 
 func TransformTime(dateTime time.Time) (time.Time, error) {
@@ -257,10 +281,6 @@ func GeneratePasswordHash(password string) (string, error) {
 	}
 	hash := string(hashedBytes[:])
 	return hash, nil
-}
-
-func (s *AuthService) GetAllSupervisors() ([]*model.Supervisor, error) {
-	return s.repo.GetAllSupervisors()
 }
 
 func (s *AuthService) GenerateToken(email, password string) (string, error) {

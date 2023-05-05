@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -59,42 +58,6 @@ func (r *AuthPostgres) CheckForSupervisor(sup_id int) error {
 		return err
 	}
 	return nil
-}
-
-func (r *AuthPostgres) GetAllSupervisors() ([]*model.Supervisor, error) {
-	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s", supervisorsTable)
-	rows_test, err := r.db.Query(query_test)
-	if err != nil {
-		return nil, err
-	}
-	var count int
-	for rows_test.Next() {
-		if err := rows_test.Scan(&count); err != nil {
-			return nil, err
-		}
-	}
-	defer rows_test.Close()
-	if count == 0 {
-		err := errors.New("в базе данных еще нет супервайзеров")
-		return nil, err
-	}
-
-	var supervisors []*model.Supervisor
-	query := fmt.Sprintf("SELECT * FROM %s", supervisorsTable)
-	rows, err := r.db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		supervisor := model.Supervisor{}
-		err := rows.Scan(&supervisor.ID, &supervisor.SupervisorInitials)
-		if err != nil {
-			return nil, err
-		}
-		supervisors = append(supervisors, &supervisor)
-	}
-	return supervisors, nil
 }
 
 func (r *AuthPostgres) GetEmailOfMainSupervisor() (string, error) {
@@ -167,6 +130,11 @@ func (r *AuthPostgres) IncrementAttemptNumberByEmail(email string) {
 	r.db.QueryRow(updateQuery, email)
 }
 
+func (r *AuthPostgres) DeleteFromTempTableByEmail(email string) {
+	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE email = $1", userCodesTable)
+	r.db.QueryRow(deleteQuery, email)
+}
+
 func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	var role string
 	query := fmt.Sprintf("SELECT role FROM %s WHERE email = $1", userCodesTable)
@@ -196,7 +164,6 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	r.DeleteFromTempTableByEmail(email)
 	return id, nil
 }
-
 func (r *AuthPostgres) GetRegistrationTimeByEmail(email string) (time.Time, error) {
 	var regDateTime time.Time
 	timeQuery := fmt.Sprintf("SELECT reg_date_time FROM %s WHERE email = $1", userCodesTable)
@@ -205,11 +172,6 @@ func (r *AuthPostgres) GetRegistrationTimeByEmail(email string) (time.Time, erro
 		return time.Now(), err
 	}
 	return regDateTime, nil
-}
-
-func (r *AuthPostgres) DeleteFromTempTableByEmail(email string) {
-	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE email = $1", userCodesTable)
-	r.db.QueryRow(deleteQuery, email)
 }
 
 func (r *AuthPostgres) GetUsersEmailsWithExpiredTime(timeNow time.Time, entryTime int64) ([]string, error) {

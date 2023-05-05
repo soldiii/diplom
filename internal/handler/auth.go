@@ -24,6 +24,10 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 			return
 		}
 		id, err := h.services.Authorization.CompareRegistrationCodes(checkCodeStruct.Email, checkCodeStruct.Code)
+		if err := h.services.Authorization.SetReportAndPlanTables(id); err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		if err != nil {
 			switch err.Error() {
 			case "неверный код", "превышен лимит количества попыток":
@@ -123,25 +127,5 @@ func (h *Handler) HandleSignIn() http.HandlerFunc {
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"token": token})
-	}
-}
-
-func (h *Handler) HandleGetAllSupervisors() http.HandlerFunc {
-
-	return func(w http.ResponseWriter, _ *http.Request) {
-
-		supervisors, err := h.services.Authorization.GetAllSupervisors()
-		if err != nil {
-			if err.Error() == "в базе данных еще нет супервайзеров" {
-				NewErrorResponse(w, http.StatusConflict, err.Error())
-				return
-			}
-
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(supervisors)
 	}
 }
