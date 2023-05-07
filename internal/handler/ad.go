@@ -19,6 +19,10 @@ func (h *Handler) HandleGETAndPOSTAd() http.HandlerFunc {
 			}
 			ads, err := h.services.GetAdsByUserID(uID)
 			if err != nil {
+				if err.Error() == "объявлений нет" {
+					NewErrorResponse(w, http.StatusOK, err.Error())
+					return
+				}
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}

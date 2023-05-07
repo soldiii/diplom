@@ -41,6 +41,7 @@ type Advertisement interface {
 	UpdateAd(string, string, string) (int, error)
 	DeleteAd(string) (int, error)
 	GetAdsBySupervisorID(string) ([]*model.Advertisement, error)
+	IsSupervisorHaveAds(string) (bool, error)
 }
 
 type Report interface {

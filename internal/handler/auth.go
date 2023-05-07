@@ -24,10 +24,6 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 			return
 		}
 		id, err := h.services.Authorization.CompareRegistrationCodes(checkCodeStruct.Email, checkCodeStruct.Code)
-		if err := h.services.Authorization.SetReportAndPlanTables(id); err != nil {
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
 		if err != nil {
 			switch err.Error() {
 			case "неверный код", "превышен лимит количества попыток":
@@ -44,6 +40,10 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 				return
 			}
 		}
+		/*if err := h.services.Authorization.SetReportAndPlanTables(id); err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}*/
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
 	}

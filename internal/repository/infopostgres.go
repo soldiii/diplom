@@ -100,9 +100,19 @@ type Rates struct {
 }
 
 func (r *InfoPostgres) GetReportByID(uID string) (*Rates, error) {
+	var flag bool
+	report := &Rates{}
+	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", reportsTable)
+	check_row := r.db.QueryRow(check_query, uID)
+	if err := check_row.Scan(&flag); err != nil {
+		return nil, err
+	}
+	if !flag {
+		report = &Rates{Internet: "0", TV: "0", Convergent: "0", CCTV: "0"}
+		return report, nil
+	}
 	query := fmt.Sprintf("SELECT SUM(internet), SUM(tv), SUM(convergent), SUM(cctv) FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)", reportsTable)
 	row := r.db.QueryRow(query, uID)
-	report := &Rates{}
 	if err := row.Scan(&report.Internet, &report.TV, &report.Convergent, &report.CCTV); err != nil {
 		return nil, err
 	}
@@ -110,9 +120,19 @@ func (r *InfoPostgres) GetReportByID(uID string) (*Rates, error) {
 }
 
 func (r *InfoPostgres) GetPlanByID(uID string) (*Rates, error) {
+	var flag bool
+	plan := &Rates{}
+	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", plansTable)
+	check_row := r.db.QueryRow(check_query, uID)
+	if err := check_row.Scan(&flag); err != nil {
+		return nil, err
+	}
+	if !flag {
+		plan = &Rates{Internet: "0", TV: "0", Convergent: "0", CCTV: "0"}
+		return plan, nil
+	}
 	query := fmt.Sprintf("SELECT internet, tv, convergent, cctv FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)", plansTable)
 	row := r.db.QueryRow(query, uID)
-	plan := &Rates{}
 	if err := row.Scan(&plan.Internet, &plan.TV, &plan.Convergent, &plan.CCTV); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/soldiii/diplom/internal/model"
 	"github.com/soldiii/diplom/internal/repository"
 )
@@ -33,6 +35,14 @@ func (s *AdService) GetAdsByUserID(userID string) ([]*model.Advertisement, error
 		supervisorID = sup_id
 	case "supervisor", "Supervisor":
 		supervisorID = userID
+	}
+	flag, err := s.repo.IsSupervisorHaveAds(supervisorID)
+	if err != nil {
+		return nil, err
+	}
+	if !flag {
+		err = errors.New("объявлений нет")
+		return nil, err
 	}
 	return s.repo.GetAdsBySupervisorID(supervisorID)
 }

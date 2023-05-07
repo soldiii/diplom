@@ -30,9 +30,22 @@ func (r *AdPostgres) CreateAd(ad *model.Advertisement) (int, error) {
 	return id, nil
 }
 
+func (r *AdPostgres) IsSupervisorHaveAds(supervisorID string) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE supervisor_id = $1) AS result", adsTable)
+	row := r.db.QueryRow(query, supervisorID)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (r *AdPostgres) GetAdsBySupervisorID(supervisorID string) ([]*model.Advertisement, error) {
 	var ads []*model.Advertisement
-	query := fmt.Sprintf("SELECT * FROM %s WHERE supervisor_id = $1", adsTable)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE supervisor_id = $1 ORDER BY id DESC", adsTable)
 	rows, err := r.db.Query(query, supervisorID)
 	if err != nil {
 		return nil, err
