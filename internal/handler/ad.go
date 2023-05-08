@@ -17,7 +17,7 @@ func (h *Handler) HandleGETAndPOSTAd() http.HandlerFunc {
 				NewErrorResponse(w, http.StatusBadRequest, "Отсутствует параметр user_id")
 				return
 			}
-			ads, err := h.services.GetAdsByUserID(uID)
+			ads, err := h.services.Advertisement.GetAdsByUserID(uID)
 			if err != nil {
 				if err.Error() == "объявлений нет" {
 					NewErrorResponse(w, http.StatusOK, err.Error())
@@ -35,7 +35,7 @@ func (h *Handler) HandleGETAndPOSTAd() http.HandlerFunc {
 				NewErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
-			id, err := h.services.CreateAd(&ad)
+			id, err := h.services.Advertisement.CreateAd(&ad)
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
@@ -65,13 +65,13 @@ func (h *Handler) HandlePUTAndDELETEAd() http.HandlerFunc {
 				NewErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
-			id, err = h.services.UpdateAd(ad.Title, ad.Text, adID)
+			id, err = h.services.Advertisement.UpdateAd(ad.Title, ad.Text, adID)
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		case "DELETE":
-			id, err = h.services.DeleteAd(adID)
+			id, err = h.services.Advertisement.DeleteAd(adID)
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return

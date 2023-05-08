@@ -110,7 +110,7 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 		return 0, err
 	}
 
-	if err := s.repo.CheckForSupervisor(sup_id); err != nil {
+	if err := s.infoRepo.CheckForSupervisor(user.SupervisorID); err != nil {
 		err = errors.New("супервайзер с таким id не существует")
 		return 0, err
 	}

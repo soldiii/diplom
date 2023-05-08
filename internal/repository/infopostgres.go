@@ -72,7 +72,7 @@ func (r *InfoPostgres) GetSupervisorIDByAgentID(uID string) (string, error) {
 	return sup_id, nil
 }
 
-func (r *InfoPostgres) GetFullNameByID(uID string) (string, error) {
+func (r *InfoPostgres) GetFullNameByAgentID(uID string) (string, error) {
 	var fullName string
 	query := fmt.Sprintf("SELECT CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s a ON u.id = a.id WHERE a.id = $1", usersTable, agentsTable)
 	row := r.db.QueryRow(query, uID)
@@ -82,10 +82,20 @@ func (r *InfoPostgres) GetFullNameByID(uID string) (string, error) {
 	return fullName, nil
 }
 
-func (r *InfoPostgres) GetSupervisorFullNameByID(uID string) (string, error) {
+func (r *InfoPostgres) GetSupervisorFullNameByAgentID(uID string) (string, error) {
 	var fullName string
 	query := fmt.Sprintf("SELECT CONCAT(u.surname, ' ', u.name, ' ', COALESCE(u.patronymic, '')) AS supervisor_name FROM %s u JOIN %s s ON u.id = s.id JOIN %s a ON a.supervisor_id = s.id WHERE a.id = $1", usersTable, supervisorsTable, agentsTable)
 	row := r.db.QueryRow(query, uID)
+	if err := row.Scan(&fullName); err != nil {
+		return "", err
+	}
+	return fullName, nil
+}
+
+func (r *InfoPostgres) GetFullNameBySupID(supID string) (string, error) {
+	var fullName string
+	query := fmt.Sprintf("SELECT CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s s ON u.id = s.id WHERE s.id = $1", usersTable, supervisorsTable)
+	row := r.db.QueryRow(query, supID)
 	if err := row.Scan(&fullName); err != nil {
 		return "", err
 	}
@@ -99,7 +109,7 @@ type Rates struct {
 	CCTV       string
 }
 
-func (r *InfoPostgres) GetReportByID(uID string) (*Rates, error) {
+func (r *InfoPostgres) GetReportByAgentID(uID string) (*Rates, error) {
 	var flag bool
 	report := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", reportsTable)
@@ -119,7 +129,7 @@ func (r *InfoPostgres) GetReportByID(uID string) (*Rates, error) {
 	return report, nil
 }
 
-func (r *InfoPostgres) GetPlanByID(uID string) (*Rates, error) {
+func (r *InfoPostgres) GetPlanByAgentID(uID string) (*Rates, error) {
 	var flag bool
 	plan := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", plansTable)
@@ -137,4 +147,74 @@ func (r *InfoPostgres) GetPlanByID(uID string) (*Rates, error) {
 		return nil, err
 	}
 	return plan, nil
+}
+
+func (r *InfoPostgres) GetPlanBySupID(supID string) (*Rates, error) {
+	var flag bool
+	plan := &Rates{}
+	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE supervisor_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", plansTable)
+	check_row := r.db.QueryRow(check_query, supID)
+	if err := check_row.Scan(&flag); err != nil {
+		return nil, err
+	}
+	if !flag {
+		plan = &Rates{Internet: "0", TV: "0", Convergent: "0", CCTV: "0"}
+		return plan, nil
+	}
+	query := fmt.Sprintf("SELECT SUM(internet), SUM(tv), SUM(convergent), SUM(cctv) FROM %s WHERE supervisor_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)", plansTable)
+	row := r.db.QueryRow(query, supID)
+	if err := row.Scan(&plan.Internet, &plan.TV, &plan.Convergent, &plan.CCTV); err != nil {
+		return nil, err
+	}
+	return plan, nil
+}
+
+func (r *InfoPostgres) CheckForSupervisor(sup_id string) error {
+	query := fmt.Sprintf("SELECT id FROM %s WHERE id = $1", supervisorsTable)
+	row := r.db.QueryRow(query, sup_id)
+	if err := row.Scan(&sup_id); err != nil {
+		return err
+	}
+	return nil
+}
+
+type AgentIDAndFullName struct {
+	ID       int
+	FullName string
+}
+
+func (r *InfoPostgres) GetAllAgentsBySupID(supID string) ([]*AgentIDAndFullName, error) {
+	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE supervisor_id = $1", agentsTable)
+	rows_test, err := r.db.Query(query_test, supID)
+	if err != nil {
+		return nil, err
+	}
+	var count int
+	for rows_test.Next() {
+		if err := rows_test.Scan(&count); err != nil {
+			return nil, err
+		}
+	}
+	defer rows_test.Close()
+	if count == 0 {
+		err := errors.New("у супервайзера нет агентов")
+		return nil, err
+	}
+
+	var agents []*AgentIDAndFullName
+	query := fmt.Sprintf("SELECT u.id, CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s a ON u.id = a.id WHERE a.supervisor_id = $1", usersTable, agentsTable)
+	rows, err := r.db.Query(query, supID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		agent := AgentIDAndFullName{}
+		err := rows.Scan(&agent.ID, &agent.FullName)
+		if err != nil {
+			return nil, err
+		}
+		agents = append(agents, &agent)
+	}
+	return agents, nil
 }

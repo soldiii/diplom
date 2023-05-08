@@ -12,13 +12,13 @@ CREATE TABLE users
 
 CREATE TABLE supervisors
 (
-    id serial not null primary key references users (id),
+    id serial not null primary key references users (id) ON DELETE CASCADE,
     initials varchar(30) not null
 );
 
 CREATE TABLE agents
 (
-    id serial not null primary key references users (id),
+    id serial not null primary key references users (id) ON DELETE CASCADE,
     supervisor_id serial references supervisors (id)
 );
 

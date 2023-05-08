@@ -51,15 +51,6 @@ func (r *AuthPostgres) CheckForEmail(email string) error {
 	return nil
 }
 
-func (r *AuthPostgres) CheckForSupervisor(sup_id int) error {
-	query := fmt.Sprintf("SELECT id FROM %s WHERE id = $1", supervisorsTable)
-	row := r.db.QueryRow(query, sup_id)
-	if err := row.Scan(&sup_id); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (r *AuthPostgres) GetEmailOfMainSupervisor() (string, error) {
 	var email string
 	query := fmt.Sprintf("SELECT email FROM %s INNER JOIN %s ON users.id=supervisors.id ORDER BY users.reg_date_time ASC LIMIT 1", usersTable, supervisorsTable)

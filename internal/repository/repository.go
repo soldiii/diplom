@@ -12,7 +12,6 @@ type Authorization interface {
 	IsTempTableHaveUser(string) (bool, error)
 	GetAttemptNumberByEmail(string) (int, error)
 	GetCodeByEmail(string) (string, error)
-	CheckForSupervisor(int) error
 	CreateUserTempTable(*model.UserCode) (int, error)
 	GetEmailOfMainSupervisor() (string, error)
 	GetSupervisorEmailFromID(int) (string, error)
@@ -30,10 +29,14 @@ type Information interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
 	GetUserRoleByID(string) (string, error)
 	GetSupervisorIDByAgentID(string) (string, error)
-	GetFullNameByID(string) (string, error)
-	GetSupervisorFullNameByID(string) (string, error)
-	GetReportByID(string) (*Rates, error)
-	GetPlanByID(string) (*Rates, error)
+	GetFullNameByAgentID(string) (string, error)
+	GetSupervisorFullNameByAgentID(string) (string, error)
+	GetReportByAgentID(string) (*Rates, error)
+	GetPlanByAgentID(string) (*Rates, error)
+	GetFullNameBySupID(string) (string, error)
+	GetPlanBySupID(string) (*Rates, error)
+	GetAllAgentsBySupID(string) ([]*AgentIDAndFullName, error)
+	CheckForSupervisor(string) error
 }
 
 type Advertisement interface {
@@ -47,10 +50,24 @@ type Advertisement interface {
 type Report interface {
 	SetReport(int) (int, error)
 	CreateReport(*model.Report) (int, error)
+	IsReportWasCreatedByThisDay(*model.Report) (bool, error)
+	UpdateReport(*model.Report) (int, error)
+	GetRatesByAgentID(string) (*Rates, error)
+	GetRatesBySupervisorIDAndPeriod(string, string) (*Rates, error)
+	GetRatesBySupervisorFirstAndLastDates(string, string, string) (*Rates, error)
+	GetReportsByAgents(string, string, string) ([]*ReportStructure, error)
 }
 
 type Plan interface {
 	SetPlan(int, int) (int, error)
+	GetPlanBySupervisorID(string) ([]*PlanStructure, error)
+	IsPlanWasCreatedByThisMonth(*model.Plan) (bool, error)
+	UpdatePlan(*model.Plan) (int, error)
+	CreatePlan(*model.Plan) (int, error)
+}
+
+type Agent interface {
+	DeleteAgent(string) (int, error)
 }
 
 type Repository struct {
@@ -59,6 +76,7 @@ type Repository struct {
 	Advertisement
 	Report
 	Plan
+	Agent
 }
 
 func NewRepository(db *sqlx.DB) *Repository {
@@ -68,5 +86,6 @@ func NewRepository(db *sqlx.DB) *Repository {
 		Advertisement: NewAdPostgres(db),
 		Report:        NewReportPostgres(db),
 		Plan:          NewPlanPostgres(db),
+		Agent:         NewAgentPostgres(db),
 	}
 }

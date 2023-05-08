@@ -20,10 +20,15 @@ func (h *Handler) InitRoutes(router *mux.Router) {
 	router.HandleFunc("/auth/sign-in", h.HandleSignIn()).Methods("POST")
 	router.HandleFunc("/info/supervisors", h.HandleGetAllSupervisors()).Methods("GET")
 	router.HandleFunc("/info/users/{id:[1-9]+\\d*}/role", h.HandleGetRoleByID()).Methods("GET")
-	router.HandleFunc("/info/agent/{id:[1-9]+\\d*}", h.HandleGetInfoAboutAgent()).Methods("GET")
+	router.HandleFunc("/info/agents/{id:[1-9]+\\d*}", h.HandleGetInfoAboutAgent()).Methods("GET")
+	router.HandleFunc("/info/supervisors/{id:[1-9]+\\d*}", h.HandleGetInfoAboutSupervisor()).Methods("GET")
+	router.HandleFunc("/info/agents", h.HandleGetAllAgentsBySupID()).Methods("GET")
 	router.HandleFunc("/ad", h.HandleGETAndPOSTAd()).Methods("GET", "POST")
 	router.HandleFunc("/ad/{id:[1-9]+\\d*}", h.HandlePUTAndDELETEAd()).Methods("PUT", "DELETE")
+	router.HandleFunc("/report", h.HandleGetReports()).Methods("GET")
+	router.HandleFunc("/report/agents", h.HandleGetReportsByAgents()).Methods("GET")
 	router.HandleFunc("/report", h.HandleCreateReport()).Methods("POST")
-
-	//router.HandleFunc("/users/{id:[0-9]+}", h.HandleGetUserById()).Methods("GET")
+	router.HandleFunc("/plan", h.HandleGetPlanBySupervisorID()).Methods("GET")
+	router.HandleFunc("/plan", h.HandleCreatePlan()).Methods("POST")
+	router.HandleFunc("/agent/{id:[1-9]+\\d*}", h.HandleDeleteAgent()).Methods("DELETE")
 }

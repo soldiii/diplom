@@ -17,8 +17,10 @@ type Authorization interface {
 
 type Information interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
+	GetAllAgentsBySupID(string) ([]*repository.AgentIDAndFullName, error)
 	GetUserRoleByID(string) (string, error)
 	GetInfoAboutAgentByID(string) (*InfoAboutAgent, error)
+	GetInfoAboutSupervisorByID(string) (*InfoAboutSupervisor, error)
 }
 
 type Advertisement interface {
@@ -30,9 +32,19 @@ type Advertisement interface {
 
 type Report interface {
 	CreateReport(*model.Report) (int, error)
+	GetRatesByAgentID(string) (*repository.Rates, error)
+	GetRatesBySupervisorIDAndPeriod(string, string) (*repository.Rates, error)
+	GetRatesBySupervisorFirstAndLastDates(string, string, string) (*repository.Rates, error)
+	GetReportsByAgents(string, string, string) ([]*repository.ReportStructure, error)
 }
 
 type Plan interface {
+	GetPlanBySupervisorID(string) ([]*repository.PlanStructure, error)
+	CreatePlan(*model.Plan) (int, error)
+}
+
+type Agent interface {
+	DeleteAgent(string) (int, error)
 }
 type Service struct {
 	Authorization
@@ -40,6 +52,7 @@ type Service struct {
 	Advertisement
 	Report
 	Plan
+	Agent
 }
 
 func NewService(repos *repository.Repository) *Service {
@@ -49,5 +62,6 @@ func NewService(repos *repository.Repository) *Service {
 		Advertisement: NewAdService(repos.Advertisement, repos.Information),
 		Report:        NewReportService(repos.Report, repos.Information),
 		Plan:          NewPlanService(repos.Plan, repos.Information),
+		Agent:         NewAgentService(repos.Agent, repos.Information),
 	}
 }
