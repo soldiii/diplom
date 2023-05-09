@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -73,10 +72,8 @@ func (p *PostgresDB) OpenPostgresDB() (*sqlx.DB, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-	/*databaseURL := "postgres://" + p.databaseURL.Username + ":" + p.databaseURL.Password + "@" + p.databaseURL.Host + ":" + p.databaseURL.Port + "/" + p.databaseURL.DBname + "?sslmode=" + p.databaseURL.SSLMode
-	if err := RunMigration(databaseURL); err != nil {
-		return nil, err
-	}*/
+	databaseURL := "postgres://" + p.databaseURL.Username + ":" + p.databaseURL.Password + "@" + p.databaseURL.Host + ":" + p.databaseURL.Port + "/" + p.databaseURL.DBname + "?sslmode=" + p.databaseURL.SSLMode
+	RunMigration(databaseURL)
 	p.Database = db
 	return db, nil
 }

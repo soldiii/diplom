@@ -52,7 +52,7 @@ func (r *ReportPostgres) IsReportWasCreatedByThisDay(report *model.Report) (bool
 
 func (r *ReportPostgres) UpdateReport(report *model.Report) (int, error) {
 	var id int
-	query := fmt.Sprintf("UPDATE %s SET internet = internet + $2, tv = tv + $3, convergent = convergent + $4, cctv = cctv + $5 WHERE agent_id = $1 AND DATE_TRUNC('day', date_time) = DATE_TRUNC('day', CURRENT_DATE) RETURNING id", reportsTable)
+	query := fmt.Sprintf("UPDATE %s SET internet = $2, tv = $3, convergent = $4, cctv = $5 WHERE agent_id = $1 AND DATE_TRUNC('day', date_time) = DATE_TRUNC('day', CURRENT_DATE) RETURNING id", reportsTable)
 	row := r.db.QueryRow(query, report.AgentID, report.Internet, report.TV, report.Convergent, report.CCTV)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
