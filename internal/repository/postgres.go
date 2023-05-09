@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
@@ -49,6 +52,17 @@ func NewPostgresDB(dbURL *DatabaseURL) *PostgresDB {
 	}
 }
 
+func RunMigration(dbURL string) error {
+	m, err := migrate.New("file://migrations", dbURL)
+	if err != nil {
+		return err
+	}
+	if err := m.Up(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (p *PostgresDB) OpenPostgresDB() (*sqlx.DB, error) {
 	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
 		p.databaseURL.Host, p.databaseURL.Port, p.databaseURL.DBname, p.databaseURL.Username, p.databaseURL.Password, p.databaseURL.SSLMode))
@@ -59,7 +73,10 @@ func (p *PostgresDB) OpenPostgresDB() (*sqlx.DB, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-
+	/*databaseURL := "postgres://" + p.databaseURL.Username + ":" + p.databaseURL.Password + "@" + p.databaseURL.Host + ":" + p.databaseURL.Port + "/" + p.databaseURL.DBname + "?sslmode=" + p.databaseURL.SSLMode
+	if err := RunMigration(databaseURL); err != nil {
+		return nil, err
+	}*/
 	p.Database = db
 	return db, nil
 }

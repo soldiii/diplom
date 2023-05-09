@@ -1,4 +1,4 @@
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
     id serial not null primary key,
     email varchar(30) not null unique,
@@ -10,19 +10,19 @@ CREATE TABLE users
     role varchar(12) not null
 );
 
-CREATE TABLE supervisors
+CREATE TABLE IF NOT EXISTS supervisors
 (
     id serial not null primary key references users (id) ON DELETE CASCADE,
     initials varchar(30) not null
 );
 
-CREATE TABLE agents
+CREATE TABLE IF NOT EXISTS agents
 (
     id serial not null primary key references users (id) ON DELETE CASCADE,
     supervisor_id serial references supervisors (id)
 );
 
-CREATE TABLE usercodes
+CREATE TABLE IF NOT EXISTS usercodes
 (
     id serial not null primary key,
     email varchar(30) not null unique,
@@ -38,7 +38,7 @@ CREATE TABLE usercodes
     attempt_number serial not null
 );
 
-CREATE TABLE ads
+CREATE TABLE IF NOT EXISTS ads
 (
     id serial not null primary key,
     supervisor_id serial references supervisors (id),
@@ -46,7 +46,7 @@ CREATE TABLE ads
     text varchar(200) not null 
 );
 
-CREATE TABLE reports
+CREATE TABLE IF NOT EXISTS reports
 (
     id serial not null primary key,
     agent_id serial references agents (id),
@@ -57,7 +57,7 @@ CREATE TABLE reports
     date_time timestamp not null
 );
 
-CREATE TABLE plans
+CREATE TABLE IF NOT EXISTS plans
 (
     id serial not null primary key,
     supervisor_id serial references supervisors (id),
