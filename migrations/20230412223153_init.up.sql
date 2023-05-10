@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users
     patronymic varchar(30),
     reg_date_time timestamp not null,
     encrypted_password varchar(100) not null,
-    role varchar(12) not null
+    role varchar(12) not null, 
+    is_valid boolean not null
 );
 
 CREATE TABLE IF NOT EXISTS supervisors

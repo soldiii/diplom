@@ -19,6 +19,7 @@ type Information interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
 	GetAllAgentsBySupID(string) ([]*repository.AgentIDAndFullName, error)
 	GetUserRoleByID(string) (string, error)
+	GetIsValidByID(string) (bool, error)
 	GetInfoAboutAgentByID(string) (*InfoAboutAgent, error)
 	GetInfoAboutSupervisorByID(string) (*InfoAboutSupervisor, error)
 }

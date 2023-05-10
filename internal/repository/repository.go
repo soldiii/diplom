@@ -28,6 +28,7 @@ type Authorization interface {
 type Information interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
 	GetUserRoleByID(string) (string, error)
+	GetIsValidByID(string) (bool, error)
 	GetSupervisorIDByAgentID(string) (string, error)
 	GetFullNameByAgentID(string) (string, error)
 	GetSupervisorFullNameByAgentID(string) (string, error)

@@ -23,6 +23,10 @@ func (s *InfoService) GetUserRoleByID(uID string) (string, error) {
 	return s.repo.GetUserRoleByID(uID)
 }
 
+func (s *InfoService) GetIsValidByID(uID string) (bool, error) {
+	return s.repo.GetIsValidByID(uID)
+}
+
 type InfoAboutAgent struct {
 	FullName           string
 	SupervisorFullName string

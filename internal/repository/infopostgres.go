@@ -62,6 +62,16 @@ func (r *InfoPostgres) GetUserRoleByID(uID string) (string, error) {
 	return role, nil
 }
 
+func (r *InfoPostgres) GetIsValidByID(uID string) (bool, error) {
+	var isValid bool
+	query := fmt.Sprintf("SELECT is_valid FROM %s WHERE id = $1", usersTable)
+	row := r.db.QueryRow(query, uID)
+	if err := row.Scan(&isValid); err != nil {
+		return false, err
+	}
+	return isValid, nil
+}
+
 func (r *InfoPostgres) GetSupervisorIDByAgentID(uID string) (string, error) {
 	var sup_id string
 	query := fmt.Sprintf("SELECT supervisor_id FROM %s WHERE id = $1", agentsTable)
@@ -184,7 +194,7 @@ type AgentIDAndFullName struct {
 }
 
 func (r *InfoPostgres) GetAllAgentsBySupID(supID string) ([]*AgentIDAndFullName, error) {
-	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE supervisor_id = $1", agentsTable)
+	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s a INNER JOIN %s u ON a.id = u.id AND u.is_valid = true WHERE supervisor_id = $1", agentsTable, usersTable)
 	rows_test, err := r.db.Query(query_test, supID)
 	if err != nil {
 		return nil, err
@@ -202,7 +212,7 @@ func (r *InfoPostgres) GetAllAgentsBySupID(supID string) ([]*AgentIDAndFullName,
 	}
 
 	var agents []*AgentIDAndFullName
-	query := fmt.Sprintf("SELECT u.id, CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s a ON u.id = a.id WHERE a.supervisor_id = $1", usersTable, agentsTable)
+	query := fmt.Sprintf("SELECT u.id, CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s a ON u.id = a.id AND u.is_valid = true WHERE a.supervisor_id = $1", usersTable, agentsTable)
 	rows, err := r.db.Query(query, supID)
 	if err != nil {
 		return nil, err

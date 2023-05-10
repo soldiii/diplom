@@ -20,7 +20,7 @@ func NewAuthPostgres(db *sqlx.DB) *AuthPostgres {
 
 func (r *AuthPostgres) CreateUser(user *model.User) (int, error) {
 	var id int
-	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id", usersTable)
+	query_usr := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, is_valid) VALUES ($1, $2, $3, $4, $5, $6, $7, true) RETURNING id", usersTable)
 	row := r.db.QueryRow(query_usr, user.Email, user.Name, user.Surname, user.Patronymic, user.RegistrationDateTime, user.EncryptedPassword, user.Role)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
@@ -136,7 +136,7 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	var id int
 	switch role {
 	case "agent", "Agent":
-		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, is_valid) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role, true FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
 		row := r.db.QueryRow(queryUser, email)
 		if err := row.Scan(&id); err != nil {
 			return 0, err
@@ -155,6 +155,7 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	r.DeleteFromTempTableByEmail(email)
 	return id, nil
 }
+
 func (r *AuthPostgres) GetRegistrationTimeByEmail(email string) (time.Time, error) {
 	var regDateTime time.Time
 	timeQuery := fmt.Sprintf("SELECT reg_date_time FROM %s WHERE email = $1", userCodesTable)

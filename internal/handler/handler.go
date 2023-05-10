@@ -20,6 +20,7 @@ func (h *Handler) InitRoutes(router *mux.Router) {
 	router.HandleFunc("/auth/sign-in", h.HandleSignIn()).Methods("POST")
 	router.HandleFunc("/info/supervisors", h.HandleGetAllSupervisors()).Methods("GET")
 	router.HandleFunc("/info/users/{id:[1-9]+\\d*}/role", h.HandleGetRoleByID()).Methods("GET")
+	router.HandleFunc("/info/users/{id:[1-9]+\\d*}/isvalid", h.HandleGetIsValidByID()).Methods("GET")
 	router.HandleFunc("/info/agents/{id:[1-9]+\\d*}", h.HandleGetInfoAboutAgent()).Methods("GET")
 	router.HandleFunc("/info/supervisors/{id:[1-9]+\\d*}", h.HandleGetInfoAboutSupervisor()).Methods("GET")
 	router.HandleFunc("/info/agents", h.HandleGetAllAgentsBySupID()).Methods("GET")
