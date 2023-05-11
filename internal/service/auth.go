@@ -332,7 +332,7 @@ func (s *AuthService) GenerateTokens(email, password string) (*Token, error) {
 		return nil, err
 	}
 	if !emailFlag {
-		err := errors.New("неверный email")
+		err := errors.New("неверный email или пароль")
 		return nil, err
 	}
 	encryptedPassword, err := s.repo.GetPassword(email)
@@ -340,7 +340,7 @@ func (s *AuthService) GenerateTokens(email, password string) (*Token, error) {
 		return nil, err
 	}
 	if !CheckPasswordHash(password, encryptedPassword) {
-		err := errors.New("неверный пароль")
+		err := errors.New("неверный email или пароль")
 		return nil, err
 	}
 	user, err := s.repo.GetUser(email, encryptedPassword)
