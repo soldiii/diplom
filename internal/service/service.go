@@ -9,7 +9,7 @@ type Authorization interface {
 	CreateAgent(*model.UserCode) (int, error)
 	CreateSupervisor(*model.UserCode) (int, error)
 	CompareRegistrationCodes(string, string) (int, error)
-	GenerateToken(string, string) (string, error)
+	GenerateTokens(string, string) (*Token, error)
 	IsTimeExpired(string) (bool, error)
 	ClearTempTableFromUsersWithExpiredTime() error
 	SetReportAndPlanTables(int) error

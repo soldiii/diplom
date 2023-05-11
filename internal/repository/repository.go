@@ -23,6 +23,9 @@ type Authorization interface {
 	GetUsersEmailsWithExpiredTime(time.Time, int64) ([]string, error)
 	IncrementAttemptNumberByEmail(string)
 	DeleteFromTempTableByEmail(string)
+	GetUser(string, string) (*model.User, error)
+	GetPassword(string) (string, error)
+	IsEmailValid(string) (bool, error)
 }
 
 type Information interface {

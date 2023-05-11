@@ -208,3 +208,33 @@ func (r *AuthPostgres) GetCodeByEmail(email string) (string, error) {
 	}
 	return code, nil
 }
+
+func (r *AuthPostgres) GetUser(email, password string) (*model.User, error) {
+	var user model.User
+	query := fmt.Sprintf("SELECT id, role FROM  %s WHERE email = $1 AND encrypted_password = $2", usersTable)
+	err := r.db.Get(&user, query, email, password)
+	return &user, err
+}
+
+func (r *AuthPostgres) GetPassword(email string) (string, error) {
+	var password string
+	query := fmt.Sprintf("SELECT encrypted_password FROM %s WHERE email = $1", usersTable)
+	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&password); err != nil {
+		return "", err
+	}
+	return password, nil
+}
+
+func (r *AuthPostgres) IsEmailValid(email string) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE email = $1) AS result", usersTable)
+	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}

@@ -108,8 +108,8 @@ func (h *Handler) HandleSignUp() http.HandlerFunc {
 }
 
 type signInInput struct {
-	Email             string `json:"email"`
-	EncryptedPassword string `json:"encrypted_password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (h *Handler) HandleSignIn() http.HandlerFunc {
@@ -119,13 +119,17 @@ func (h *Handler) HandleSignIn() http.HandlerFunc {
 			NewErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		token, err := h.services.Authorization.GenerateToken(input.Email, input.EncryptedPassword)
+		tokens, err := h.services.Authorization.GenerateTokens(input.Email, input.Password)
 		if err != nil {
+			if err.Error() == "неверный email или пароль" {
+				NewErrorResponse(w, http.StatusUnauthorized, err.Error())
+				return
+			}
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]interface{}{"token": token})
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(tokens)
 	}
 }

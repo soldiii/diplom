@@ -171,7 +171,7 @@ func (r *InfoPostgres) GetPlanBySupID(supID string) (*Rates, error) {
 		plan = &Rates{Internet: "0", TV: "0", Convergent: "0", CCTV: "0"}
 		return plan, nil
 	}
-	query := fmt.Sprintf("SELECT SUM(internet), SUM(tv), SUM(convergent), SUM(cctv) FROM %s WHERE supervisor_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)", plansTable)
+	query := fmt.Sprintf("SELECT SUM(internet), SUM(tv), SUM(convergent), SUM(cctv) FROM %s p INNER JOIN %s u ON WHERE p.supervisor_id = u.id WHERE p.supervisor_id = $1 AND u.is_valid = true AND DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE)", plansTable, usersTable)
 	row := r.db.QueryRow(query, supID)
 	if err := row.Scan(&plan.Internet, &plan.TV, &plan.Convergent, &plan.CCTV); err != nil {
 		return nil, err

@@ -2,9 +2,11 @@ package service
 
 import (
 	"errors"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/soldiii/diplom/internal/model"
 	"github.com/soldiii/diplom/internal/repository"
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +27,16 @@ type AuthService struct {
 
 func NewAuthService(repo repository.Authorization, infoRepo repository.Information, reportRepo repository.Report, planRepo repository.Plan) *AuthService {
 	return &AuthService{repo: repo, infoRepo: infoRepo, emailService: NewEmailService(), reportRepo: reportRepo, planRepo: planRepo}
+}
+
+const (
+	ACCESS_TOKEN_TTL  = 15 * time.Minute
+	REFRESH_TOKEN_TTL = 1 * time.Hour
+)
+
+type Token struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (s *AuthService) SetUser(user *model.UserCode) (bool, error) {
@@ -273,6 +285,11 @@ func (s *AuthService) ClearTempTableFromUsersWithExpiredTime() error {
 	return nil
 }
 
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 func GeneratePasswordHash(password string) (string, error) {
 	saltedBytes := []byte(password)
 	hashedBytes, err := bcrypt.GenerateFromPassword(saltedBytes, bcrypt.DefaultCost)
@@ -283,6 +300,61 @@ func GeneratePasswordHash(password string) (string, error) {
 	return hash, nil
 }
 
-func (s *AuthService) GenerateToken(email, password string) (string, error) {
-	return "", nil
+func CreateTokens(user *model.User, accessSecretKey, refreshSecretKey []byte) (*Token, error) {
+	accessClaims := jwt.MapClaims{
+		"sub":      strconv.Itoa(user.ID),
+		"exp":      time.Now().Add(ACCESS_TOKEN_TTL).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   user.ID,
+		"userRole": user.Role,
+	}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessString, err := accessToken.SignedString(accessSecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshClaims := jwt.MapClaims{
+		"sub": strconv.Itoa(user.ID),
+		"exp": time.Now().Add(REFRESH_TOKEN_TTL).Unix(),
+	}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshString, err := refreshToken.SignedString(refreshSecretKey)
+	if err != nil {
+		return nil, err
+	}
+	return &Token{AccessToken: accessString, RefreshToken: refreshString}, nil
+}
+
+func (s *AuthService) GenerateTokens(email, password string) (*Token, error) {
+	emailFlag, err := s.repo.IsEmailValid(email)
+	if err != nil {
+		return nil, err
+	}
+	if !emailFlag {
+		err := errors.New("неверный email или пароль")
+		return nil, err
+	}
+	encryptedPassword, err := s.repo.GetPassword(email)
+	if err != nil {
+		return nil, err
+	}
+	if !CheckPasswordHash(password, encryptedPassword) {
+		err := errors.New("неверный email или пароль")
+		return nil, err
+	}
+	user, err := s.repo.GetUser(email, encryptedPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	accessSecretKey := os.Getenv("ACCESS_SECRET_KEY")
+	refreshSecretKey := os.Getenv("REFRESH_SECRET_KEY")
+
+	tokens, err := CreateTokens(user, []byte(accessSecretKey), []byte(refreshSecretKey))
+	if err != nil {
+		return nil, err
+	}
+
+	return tokens, nil
 }
