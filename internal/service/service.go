@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/soldiii/diplom/internal/model"
 	"github.com/soldiii/diplom/internal/repository"
 )
@@ -10,9 +11,14 @@ type Authorization interface {
 	CreateSupervisor(*model.UserCode) (int, error)
 	CompareRegistrationCodes(string, string) (int, error)
 	GenerateTokens(string, string) (*Token, error)
+	ParseToken(string, bool) (*TokenClaims, error)
+	RefreshTokens(string, string, int) (*Token, error)
+	CompareRefreshTokens(string, int) (bool, error)
+	GenerateTokensByRefresh(string, int) (*Token, error)
 	IsTimeExpired(string) (bool, error)
 	ClearTempTableFromUsersWithExpiredTime() error
 	SetReportAndPlanTables(int) error
+	IsTokenExpired(*jwt.NumericDate) bool
 }
 
 type Information interface {

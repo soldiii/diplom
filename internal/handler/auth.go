@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/soldiii/diplom/internal/model"
@@ -129,6 +130,42 @@ func (h *Handler) HandleSignIn() http.HandlerFunc {
 			return
 		}
 
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(tokens)
+	}
+}
+
+func (h *Handler) HandleRefreshToken() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.Header.Get(AUTHORIZATION_HEADER)
+		if tokenString == "" {
+			NewErrorResponse(w, http.StatusUnauthorized, "пустой auth header")
+			return
+		}
+		headerParts := strings.Split(tokenString, " ")
+		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+			NewErrorResponse(w, http.StatusUnauthorized, "неправильный auth header")
+			return
+		}
+
+		if len(headerParts[1]) == 0 {
+			NewErrorResponse(w, http.StatusUnauthorized, "токен пуст")
+			return
+		}
+		claims, err := h.services.Authorization.ParseToken(headerParts[1], false)
+		if err != nil {
+			NewErrorResponse(w, http.StatusUnauthorized, err.Error())
+			return
+		}
+		tokens, err := h.services.Authorization.RefreshTokens(headerParts[1], claims.UserRole, claims.UserID)
+		if err != nil {
+			if err.Error() == "неверный токен" {
+				NewErrorResponse(w, http.StatusUnauthorized, err.Error())
+				return
+			}
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(tokens)
 	}

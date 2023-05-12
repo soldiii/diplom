@@ -30,8 +30,8 @@ func NewAuthService(repo repository.Authorization, infoRepo repository.Informati
 }
 
 const (
-	ACCESS_TOKEN_TTL  = 15 * time.Minute
-	REFRESH_TOKEN_TTL = 1 * time.Hour
+	ACCESS_TOKEN_TTL  = 1 * time.Minute
+	REFRESH_TOKEN_TTL = 3 * time.Minute
 )
 
 type Token struct {
@@ -315,8 +315,11 @@ func CreateTokens(user *model.User, accessSecretKey, refreshSecretKey []byte) (*
 	}
 
 	refreshClaims := jwt.MapClaims{
-		"sub": strconv.Itoa(user.ID),
-		"exp": time.Now().Add(REFRESH_TOKEN_TTL).Unix(),
+		"sub":      strconv.Itoa(user.ID),
+		"exp":      time.Now().Add(REFRESH_TOKEN_TTL).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   user.ID,
+		"userRole": user.Role,
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshString, err := refreshToken.SignedString(refreshSecretKey)
@@ -356,5 +359,117 @@ func (s *AuthService) GenerateTokens(email, password string) (*Token, error) {
 		return nil, err
 	}
 
+	rtokenFlag, err := s.repo.IsUserHaveRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	if rtokenFlag {
+		_, err = s.repo.UpdateRefreshToken(user.ID, tokens.RefreshToken)
+		if err != nil {
+			return nil, err
+		}
+		return tokens, nil
+	}
+	_, err = s.repo.PostRefreshToken(user.ID, tokens.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
 	return tokens, nil
+}
+
+type TokenClaims struct {
+	jwt.RegisteredClaims
+	UserID   int    `json:"userID"`
+	UserRole string `json:"userRole"`
+}
+
+func (s *AuthService) ParseToken(tokenstring string, flag bool) (*TokenClaims, error) {
+	var secretKey string
+	if flag {
+		secretKey = os.Getenv("ACCESS_SECRET_KEY")
+	} else {
+		secretKey = os.Getenv("REFRESH_SECRET_KEY")
+	}
+
+	token, err := jwt.ParseWithClaims(tokenstring, &TokenClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*TokenClaims)
+	if !ok {
+		return nil, errors.New("token claims are not of type *TokenClaims")
+	}
+
+	return claims, nil
+}
+
+func (s *AuthService) IsTokenExpired(ExpiredAt *jwt.NumericDate) bool {
+	return ExpiredAt.Unix() < time.Now().Unix()
+}
+
+func (s *AuthService) CompareRefreshTokens(token string, id int) (bool, error) {
+	return s.repo.CompareRefreshTokens(token, id)
+}
+
+func CreateTokensByRefresh(role string, id int, accessSecretKey, refreshSecretKey []byte) (*Token, error) {
+	accessClaims := jwt.MapClaims{
+		"sub":      strconv.Itoa(id),
+		"exp":      time.Now().Add(ACCESS_TOKEN_TTL).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   id,
+		"userRole": role,
+	}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessString, err := accessToken.SignedString(accessSecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshClaims := jwt.MapClaims{
+		"sub":      strconv.Itoa(id),
+		"exp":      time.Now().Add(REFRESH_TOKEN_TTL).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   id,
+		"userRole": role,
+	}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshString, err := refreshToken.SignedString(refreshSecretKey)
+	if err != nil {
+		return nil, err
+	}
+	return &Token{AccessToken: accessString, RefreshToken: refreshString}, nil
+}
+
+func (s *AuthService) GenerateTokensByRefresh(role string, id int) (*Token, error) {
+	accessSecretKey := os.Getenv("ACCESS_SECRET_KEY")
+	refreshSecretKey := os.Getenv("REFRESH_SECRET_KEY")
+
+	tokens, err := CreateTokensByRefresh(role, id, []byte(accessSecretKey), []byte(refreshSecretKey))
+	if err != nil {
+		return nil, err
+	}
+	_, err = s.repo.UpdateRefreshToken(id, tokens.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
+func (s *AuthService) RefreshTokens(refresh_token string, role string, id int) (*Token, error) {
+	refreshFlag, err := s.CompareRefreshTokens(refresh_token, id)
+	if err != nil {
+		return nil, err
+	}
+	if refreshFlag {
+		tokens, err := s.GenerateTokensByRefresh(role, id)
+		if err != nil {
+			return nil, err
+		}
+		return tokens, nil
+	}
+	err = errors.New("неверный токен")
+	return nil, err
 }

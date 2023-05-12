@@ -69,3 +69,9 @@ CREATE TABLE IF NOT EXISTS plans
     cctv smallint not null,
     date_time timestamp not null
 );
+
+CREATE TABLE IF NOT EXISTS refresh_tokens
+(
+    id serial not null primary key references users (id) ON DELETE CASCADE,
+    token varchar(600) not null
+);

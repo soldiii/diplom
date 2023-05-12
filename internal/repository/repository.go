@@ -26,6 +26,10 @@ type Authorization interface {
 	GetUser(string, string) (*model.User, error)
 	GetPassword(string) (string, error)
 	IsEmailValid(string) (bool, error)
+	PostRefreshToken(int, string) (int, error)
+	IsUserHaveRefreshToken(int) (bool, error)
+	UpdateRefreshToken(int, string) (int, error)
+	CompareRefreshTokens(string, int) (bool, error)
 }
 
 type Information interface {

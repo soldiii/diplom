@@ -4,20 +4,22 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang-migrate/migrate"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
 
 const (
-	usersTable       = "users"
-	agentsTable      = "agents"
-	supervisorsTable = "supervisors"
-	userCodesTable   = "usercodes"
-	adsTable         = "ads"
-	plansTable       = "plans"
-	reportsTable     = "reports"
+	usersTable         = "users"
+	agentsTable        = "agents"
+	supervisorsTable   = "supervisors"
+	userCodesTable     = "usercodes"
+	adsTable           = "ads"
+	plansTable         = "plans"
+	reportsTable       = "reports"
+	refreshTokensTable = "refresh_tokens"
 )
 
 type DatabaseURL struct {

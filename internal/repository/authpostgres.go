@@ -144,7 +144,7 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 		queryAgent := fmt.Sprintf("INSERT INTO %s (id, supervisor_id) SELECT users.id, usercodes.supervisor_id FROM %s JOIN users ON users.email = usercodes.email", agentsTable, userCodesTable)
 		r.db.QueryRow(queryAgent)
 	case "supervisor", "Supervisor":
-		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
+		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, is_valid) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role, true FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
 		row := r.db.QueryRow(queryUser, email)
 		if err := row.Scan(&id); err != nil {
 			return 0, err
@@ -230,6 +230,52 @@ func (r *AuthPostgres) IsEmailValid(email string) (bool, error) {
 	var flag bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE email = $1) AS result", usersTable)
 	row := r.db.QueryRow(query, email)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AuthPostgres) PostRefreshToken(userID int, token string) (int, error) {
+	var id int
+	query := fmt.Sprintf("INSERT INTO %s (id, token) VALUES ($1, $2) RETURNING id", refreshTokensTable)
+	row := r.db.QueryRow(query, userID, token)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (r *AuthPostgres) IsUserHaveRefreshToken(userID int) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1) AS result", refreshTokensTable)
+	row := r.db.QueryRow(query, userID)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AuthPostgres) UpdateRefreshToken(userID int, token string) (int, error) {
+	var id int
+	query := fmt.Sprintf("UPDATE %s SET token = $1 WHERE id = $2 RETURNING id", refreshTokensTable)
+	row := r.db.QueryRow(query, token, userID)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (r *AuthPostgres) CompareRefreshTokens(token string, id int) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT CASE WHEN token = $1 THEN 1 ELSE 0 END as result FROM %s WHERE id = $2", refreshTokensTable)
+	row := r.db.QueryRow(query, token, id)
 	if err := row.Scan(&flag); err != nil {
 		return false, err
 	}
