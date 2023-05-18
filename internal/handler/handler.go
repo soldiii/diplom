@@ -14,7 +14,6 @@ func NewHandler(services *service.Service) *Handler {
 }
 
 func (h *Handler) InitRoutes(router *mux.Router) {
-
 	router.HandleFunc("/auth/sign-up", h.HandleSignUp()).Methods("POST")
 	router.HandleFunc("/auth/sign-up/check-up", h.HandleRegistrationCode()).Methods("POST")
 	router.HandleFunc("/auth/sign-in", h.HandleSignIn()).Methods("POST")

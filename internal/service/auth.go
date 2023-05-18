@@ -137,7 +137,7 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		s.emailService.SendEmailToSupervisor(emailSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
+		go s.emailService.SendEmailToSupervisor(emailSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
 	}
 
 	return s.repo.CreateUserTempTable(user)
@@ -177,7 +177,7 @@ func (s *AuthService) CreateSupervisor(user *model.UserCode) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		s.emailService.SendEmailToSupervisor(emailMainSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
+		go s.emailService.SendEmailToSupervisor(emailMainSupervisor, user.Email, user.Name, user.Surname, user.Patronymic, user.Code, user.Role)
 	}
 
 	return s.repo.CreateUserTempTable(user)
@@ -219,7 +219,7 @@ func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, 
 		}
 		return attemptNumber, err
 	}
-	s.emailService.SendEmailToRegistratedUser(email)
+	go s.emailService.SendEmailToRegistratedUser(email)
 
 	return s.repo.MigrateFromTemporaryTable(email)
 }

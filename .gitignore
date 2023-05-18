@@ -1,4 +1,4 @@
 *.exe
 .env
-.crt
-.key
+*.crt
+*.key
