@@ -14,7 +14,7 @@ import (
 
 const (
 	NUMBER_ATTEMPTS                  = 3
-	CODE_ENTRY_TIME_IN_MINUTES int64 = 1
+	CODE_ENTRY_TIME_IN_MINUTES int64 = 5
 )
 
 type AuthService struct {
@@ -30,8 +30,8 @@ func NewAuthService(repo repository.Authorization, infoRepo repository.Informati
 }
 
 const (
-	ACCESS_TOKEN_TTL  = 1 * time.Minute
-	REFRESH_TOKEN_TTL = 3 * time.Minute
+	ACCESS_TOKEN_TTL  = 30 * time.Minute
+	REFRESH_TOKEN_TTL = 120 * time.Hour
 )
 
 type Token struct {
@@ -122,7 +122,12 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 		return 0, err
 	}
 
-	if err := s.infoRepo.CheckForSupervisor(user.SupervisorID); err != nil {
+	supID, err := strconv.Atoi(user.SupervisorID)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := s.infoRepo.CheckForSupervisor(supID); err != nil {
 		err = errors.New("супервайзер с таким id не существует")
 		return 0, err
 	}
@@ -220,20 +225,18 @@ func (s *AuthService) CompareRegistrationCodes(email string, code string) (int, 
 }
 
 func (s *AuthService) SetReportAndPlanTables(id int) error {
-	agID := strconv.Itoa(id)
-	sup_id, err := s.infoRepo.GetSupervisorIDByAgentID(agID)
+	sup_id, err := s.infoRepo.GetSupervisorIDByAgentID(id)
 	if err != nil {
 		return err
 	}
 	if _, err := s.reportRepo.SetReport(id); err != nil {
 		return err
 	}
-	supID, err := strconv.Atoi(sup_id)
 	if err != nil {
 		return err
 	}
 
-	if _, err := s.planRepo.SetPlan(supID, id); err != nil {
+	if _, err := s.planRepo.SetPlan(sup_id, id); err != nil {
 		return err
 	}
 	return nil

@@ -28,11 +28,11 @@ func (s *ReportService) CreateReport(report *model.Report) (int, error) {
 	return s.repo.CreateReport(report)
 }
 
-func (s *ReportService) GetRatesByAgentID(agentID string) (*repository.Rates, error) {
+func (s *ReportService) GetRatesByAgentID(agentID int) (*repository.Rates, error) {
 	return s.repo.GetRatesByAgentID(agentID)
 }
 
-func (s *ReportService) GetRatesBySupervisorIDAndPeriod(supID, period string) (*repository.Rates, error) {
+func (s *ReportService) GetRatesBySupervisorIDAndPeriod(supID int, period string) (*repository.Rates, error) {
 	return s.repo.GetRatesBySupervisorIDAndPeriod(supID, period)
 }
 
@@ -46,7 +46,7 @@ func IncreaseLastDateByOneDay(lastDate string) (string, error) {
 	return newLastDate, nil
 }
 
-func (s *ReportService) GetRatesBySupervisorFirstAndLastDates(supID, firstDate, lastDate string) (*repository.Rates, error) {
+func (s *ReportService) GetRatesBySupervisorFirstAndLastDates(supID int, firstDate, lastDate string) (*repository.Rates, error) {
 	newLastDate, err := IncreaseLastDateByOneDay(lastDate)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (s *ReportService) GetRatesBySupervisorFirstAndLastDates(supID, firstDate, 
 	return s.repo.GetRatesBySupervisorFirstAndLastDates(supID, firstDate, newLastDate)
 }
 
-func (s *ReportService) GetReportsByAgents(supID, firstDate, lastDate string) ([]*repository.ReportStructure, error) {
+func (s *ReportService) GetReportsByAgents(supID int, firstDate, lastDate string) ([]*repository.ReportStructure, error) {
 	newLastDate, err := IncreaseLastDateByOneDay(lastDate)
 	if err != nil {
 		return nil, err

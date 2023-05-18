@@ -5,3 +5,4 @@ DROP TABLE IF EXISTS agents;
 DROP TABlE IF EXISTS supervisors;
 DROP TABLE IF EXISTS usercodes;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS refresh_tokens;

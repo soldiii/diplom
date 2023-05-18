@@ -4,7 +4,7 @@ import "time"
 
 type Report struct {
 	ID         int
-	AgentID    string `json:"agent_id"`
+	AgentID    int
 	Internet   string `json:"internet"`
 	TV         string `json:"tv"`
 	Convergent string `json:"Convergent"`

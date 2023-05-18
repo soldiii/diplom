@@ -16,7 +16,7 @@ func NewPlanService(repo repository.Plan, infoRepo repository.Information) *Plan
 	return &PlanService{repo: repo, infoRepo: infoRepo}
 }
 
-func (s *PlanService) GetPlanBySupervisorID(supID string) ([]*repository.PlanStructure, error) {
+func (s *PlanService) GetPlanBySupervisorID(supID int) ([]*repository.PlanStructure, error) {
 	return s.repo.GetPlanBySupervisorID(supID)
 }
 

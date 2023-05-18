@@ -60,7 +60,7 @@ func (r *ReportPostgres) UpdateReport(report *model.Report) (int, error) {
 	return id, nil
 }
 
-func (r *ReportPostgres) GetRatesByAgentID(agentID string) (*Rates, error) {
+func (r *ReportPostgres) GetRatesByAgentID(agentID int) (*Rates, error) {
 	var flag bool
 	report := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('day', date_time) = DATE_TRUNC('day', CURRENT_DATE)) AS result", reportsTable)
@@ -80,7 +80,7 @@ func (r *ReportPostgres) GetRatesByAgentID(agentID string) (*Rates, error) {
 	return report, nil
 }
 
-func (r *ReportPostgres) GetRatesBySupervisorIDAndPeriod(supID, period string) (*Rates, error) {
+func (r *ReportPostgres) GetRatesBySupervisorIDAndPeriod(supID int, period string) (*Rates, error) {
 	var flag bool
 	report := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s r JOIN %s a ON r.agent_id = a.id WHERE a.supervisor_id = $1 AND DATE_TRUNC($2, date_time) = DATE_TRUNC($2, CURRENT_DATE)) AS result", reportsTable, agentsTable)
@@ -101,7 +101,7 @@ func (r *ReportPostgres) GetRatesBySupervisorIDAndPeriod(supID, period string) (
 	return report, nil
 }
 
-func (r *ReportPostgres) GetRatesBySupervisorFirstAndLastDates(supID, firstDate, lastDate string) (*Rates, error) {
+func (r *ReportPostgres) GetRatesBySupervisorFirstAndLastDates(supID int, firstDate, lastDate string) (*Rates, error) {
 	var flag bool
 	report := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s r JOIN %s a ON r.agent_id = a.id WHERE a.supervisor_id = $1 AND DATE_TRUNC('day', date_time) >= $2::timestamp AND date_time <= $3::timestamp) AS result", reportsTable, agentsTable)
@@ -131,9 +131,9 @@ type ReportStructure struct {
 	CCTV       int
 }
 
-func (r *ReportPostgres) GetReportsByAgents(supID, firstDate, lastDate string) ([]*ReportStructure, error) {
+func (r *ReportPostgres) GetReportsByAgents(supID int, firstDate, lastDate string) ([]*ReportStructure, error) {
 	var reports []*ReportStructure
-	query := fmt.Sprintf("SELECT a.id, CONCAT(u.surname, ' ', u.name, COALESCE(CONCAT(' ', u.patronymic), '')) AS full_name, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.internet ELSE 0 END), 0) AS internet, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.tv ELSE 0 END), 0) AS tv, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.convergent ELSE 0 END), 0) AS convergent, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.cctv ELSE 0 END), 0) AS cctv FROM %s a LEFT JOIN %s r ON a.id = r.agent_id JOIN %s u ON a.id = u.id WHERE a.supervisor_id = $1 GROUP BY a.id, u.surname, u.name, u.patronymic ORDER BY r.internet, r.tv, r.convergent, r.cctv DESC", agentsTable, reportsTable, usersTable)
+	query := fmt.Sprintf("SELECT a.id, CONCAT(u.surname, ' ', u.name, COALESCE(CONCAT(' ', u.patronymic), '')) AS full_name, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.internet ELSE 0 END), 0) AS internet, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.tv ELSE 0 END), 0) AS tv, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.convergent ELSE 0 END), 0) AS convergent, COALESCE (SUM(CASE WHEN DATE_TRUNC('day', r.date_time) >= $2::timestamp AND r.date_time <= $3::timestamp THEN r.cctv ELSE 0 END), 0) AS cctv FROM %s a LEFT JOIN %s r ON a.id = r.agent_id JOIN %s u ON a.id = u.id WHERE a.supervisor_id = $1 GROUP BY a.id, u.surname, u.name, u.patronymic ORDER BY internet DESC, tv DESC, convergent DESC, cctv DESC", agentsTable, reportsTable, usersTable)
 	rows, err := r.db.Query(query, supID, firstDate, lastDate)
 	if err != nil {
 		return nil, err

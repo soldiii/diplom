@@ -18,19 +18,15 @@ func NewAdPostgres(db *sqlx.DB) *AdPostgres {
 
 func (r *AdPostgres) CreateAd(ad *model.Advertisement) (int, error) {
 	var id int
-	sup_id, err := strconv.Atoi(ad.SupervisorID)
-	if err != nil {
-		return 0, err
-	}
 	query := fmt.Sprintf("INSERT INTO %s (supervisor_id, title, text) VALUES ($1, $2, $3) RETURNING id", adsTable)
-	row := r.db.QueryRow(query, sup_id, ad.Title, ad.Text)
+	row := r.db.QueryRow(query, ad.SupervisorID, ad.Title, ad.Text)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
 	return id, nil
 }
 
-func (r *AdPostgres) IsSupervisorHaveAds(supervisorID string) (bool, error) {
+func (r *AdPostgres) IsSupervisorHaveAds(supervisorID int) (bool, error) {
 	var flag bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE supervisor_id = $1) AS result", adsTable)
 	row := r.db.QueryRow(query, supervisorID)
@@ -43,7 +39,7 @@ func (r *AdPostgres) IsSupervisorHaveAds(supervisorID string) (bool, error) {
 	return true, nil
 }
 
-func (r *AdPostgres) GetAdsBySupervisorID(supervisorID string) ([]*model.Advertisement, error) {
+func (r *AdPostgres) GetAdsBySupervisorID(supervisorID int) ([]*model.Advertisement, error) {
 	var ads []*model.Advertisement
 	query := fmt.Sprintf("SELECT * FROM %s WHERE supervisor_id = $1 ORDER BY id DESC", adsTable)
 	rows, err := r.db.Query(query, supervisorID)

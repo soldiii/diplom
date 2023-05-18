@@ -23,30 +23,29 @@ type Authorization interface {
 
 type Information interface {
 	GetAllSupervisors() ([]*model.Supervisor, error)
-	GetAllAgentsBySupID(string) ([]*repository.AgentIDAndFullName, error)
-	GetUserRoleByID(string) (string, error)
-	GetIsValidByID(string) (bool, error)
-	GetInfoAboutAgentByID(string) (*InfoAboutAgent, error)
-	GetInfoAboutSupervisorByID(string) (*InfoAboutSupervisor, error)
+	GetAllAgentsBySupID(int) ([]*repository.AgentIDAndFullName, error)
+	GetIsValidByID(int) (bool, error)
+	GetInfoAboutAgentByID(int) (*InfoAboutAgent, error)
+	GetInfoAboutSupervisorByID(int) (*InfoAboutSupervisor, error)
 }
 
 type Advertisement interface {
 	CreateAd(*model.Advertisement) (int, error)
 	UpdateAd(string, string, string) (int, error)
 	DeleteAd(string) (int, error)
-	GetAdsByUserID(string) ([]*model.Advertisement, error)
+	GetAdsByUserID(int, string) ([]*model.Advertisement, error)
 }
 
 type Report interface {
 	CreateReport(*model.Report) (int, error)
-	GetRatesByAgentID(string) (*repository.Rates, error)
-	GetRatesBySupervisorIDAndPeriod(string, string) (*repository.Rates, error)
-	GetRatesBySupervisorFirstAndLastDates(string, string, string) (*repository.Rates, error)
-	GetReportsByAgents(string, string, string) ([]*repository.ReportStructure, error)
+	GetRatesByAgentID(int) (*repository.Rates, error)
+	GetRatesBySupervisorIDAndPeriod(int, string) (*repository.Rates, error)
+	GetRatesBySupervisorFirstAndLastDates(int, string, string) (*repository.Rates, error)
+	GetReportsByAgents(int, string, string) ([]*repository.ReportStructure, error)
 }
 
 type Plan interface {
-	GetPlanBySupervisorID(string) ([]*repository.PlanStructure, error)
+	GetPlanBySupervisorID(int) ([]*repository.PlanStructure, error)
 	CreatePlan(*model.Plan) (int, error)
 }
 

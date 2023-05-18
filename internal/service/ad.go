@@ -20,13 +20,9 @@ func (s *AdService) CreateAd(ad *model.Advertisement) (int, error) {
 	return s.repo.CreateAd(ad)
 }
 
-func (s *AdService) GetAdsByUserID(userID string) ([]*model.Advertisement, error) {
-	role, err := s.infoRepo.GetUserRoleByID(userID)
-	var supervisorID string
-	if err != nil {
-		return nil, err
-	}
-	switch role {
+func (s *AdService) GetAdsByUserID(userID int, userRole string) ([]*model.Advertisement, error) {
+	var supervisorID int
+	switch userRole {
 	case "agent", "Agent":
 		sup_id, err := s.infoRepo.GetSupervisorIDByAgentID(userID)
 		if err != nil {

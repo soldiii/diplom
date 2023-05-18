@@ -25,9 +25,9 @@ type PlanStructure struct {
 	CCTV       int
 }
 
-func (r *PlanPostgres) GetPlanBySupervisorID(supID string) ([]*PlanStructure, error) {
+func (r *PlanPostgres) GetPlanBySupervisorID(supID int) ([]*PlanStructure, error) {
 	var plans []*PlanStructure
-	query := fmt.Sprintf("SELECT a.id, CONCAT(u.surname, ' ', u.name, COALESCE(CONCAT(' ', u.patronymic), '')) AS full_name, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.internet ELSE 0 END), 0) AS internet, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.tv ELSE 0 END), 0) AS tv, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.convergent ELSE 0 END), 0) AS convergent, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.cctv ELSE 0 END), 0) AS cctv FROM %s a LEFT JOIN %s p ON a.id = p.agent_id JOIN %s u ON a.id = u.id AND u.is_valid = true WHERE a.supervisor_id = $1 GROUP BY a.id, u.surname, u.name, u.patronymic ORDER BY ORDER BY r.internet, r.tv, r.convergent, r.cctv DESC", agentsTable, plansTable, usersTable)
+	query := fmt.Sprintf("SELECT a.id, CONCAT(u.surname, ' ', u.name, COALESCE(CONCAT(' ', u.patronymic), '')) AS full_name, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.internet ELSE 0 END), 0) AS internet, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.tv ELSE 0 END), 0) AS tv, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.convergent ELSE 0 END), 0) AS convergent, COALESCE (SUM(CASE WHEN DATE_TRUNC('month', p.date_time) = DATE_TRUNC('month', CURRENT_DATE) THEN p.cctv ELSE 0 END), 0) AS cctv FROM %s a LEFT JOIN %s p ON a.id = p.agent_id JOIN %s u ON a.id = u.id AND u.is_valid = true WHERE a.supervisor_id = $1 GROUP BY a.id, u.surname, u.name, u.patronymic ORDER BY internet DESC, tv DESC, convergent DESC, cctv DESC", agentsTable, plansTable, usersTable)
 	rows, err := r.db.Query(query, supID)
 	if err != nil {
 		return nil, err

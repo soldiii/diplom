@@ -12,12 +12,14 @@ func (h *Handler) HandleGETAndPOSTAd() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			uID := r.URL.Query().Get("user_id")
-			if uID == "" {
-				NewErrorResponse(w, http.StatusBadRequest, "Отсутствует параметр user_id")
+			val, err := ParseFromContext(r, user)
+			if err != nil {
+				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-			ads, err := h.services.Advertisement.GetAdsByUserID(uID)
+			uID := val.ID
+			uRole := val.Role
+			ads, err := h.services.Advertisement.GetAdsByUserID(uID, uRole)
 			if err != nil {
 				if err.Error() == "объявлений нет" {
 					NewErrorResponse(w, http.StatusOK, err.Error())
@@ -31,10 +33,16 @@ func (h *Handler) HandleGETAndPOSTAd() http.HandlerFunc {
 			json.NewEncoder(w).Encode(ads)
 		case "POST":
 			var ad model.Advertisement
+			val, err := ParseFromContext(r, supervisor)
+			if err != nil {
+				NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
 			if err := json.NewDecoder(r.Body).Decode(&ad); err != nil {
 				NewErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
+			ad.SupervisorID = val.ID
 			id, err := h.services.Advertisement.CreateAd(&ad)
 			if err != nil {
 				NewErrorResponse(w, http.StatusInternalServerError, err.Error())

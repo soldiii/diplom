@@ -52,17 +52,7 @@ func (r *InfoPostgres) GetAllSupervisors() ([]*model.Supervisor, error) {
 	return supervisors, nil
 }
 
-func (r *InfoPostgres) GetUserRoleByID(uID string) (string, error) {
-	var role string
-	query := fmt.Sprintf("SELECT role FROM %s WHERE id = $1", usersTable)
-	row := r.db.QueryRow(query, uID)
-	if err := row.Scan(&role); err != nil {
-		return "", err
-	}
-	return role, nil
-}
-
-func (r *InfoPostgres) GetIsValidByID(uID string) (bool, error) {
+func (r *InfoPostgres) GetIsValidByID(uID int) (bool, error) {
 	var isValid bool
 	query := fmt.Sprintf("SELECT is_valid FROM %s WHERE id = $1", usersTable)
 	row := r.db.QueryRow(query, uID)
@@ -72,17 +62,17 @@ func (r *InfoPostgres) GetIsValidByID(uID string) (bool, error) {
 	return isValid, nil
 }
 
-func (r *InfoPostgres) GetSupervisorIDByAgentID(uID string) (string, error) {
-	var sup_id string
+func (r *InfoPostgres) GetSupervisorIDByAgentID(uID int) (int, error) {
+	var sup_id int
 	query := fmt.Sprintf("SELECT supervisor_id FROM %s WHERE id = $1", agentsTable)
 	row := r.db.QueryRow(query, uID)
 	if err := row.Scan(&sup_id); err != nil {
-		return "", err
+		return 0, err
 	}
 	return sup_id, nil
 }
 
-func (r *InfoPostgres) GetFullNameByAgentID(uID string) (string, error) {
+func (r *InfoPostgres) GetFullNameByAgentID(uID int) (string, error) {
 	var fullName string
 	query := fmt.Sprintf("SELECT CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s a ON u.id = a.id WHERE a.id = $1", usersTable, agentsTable)
 	row := r.db.QueryRow(query, uID)
@@ -92,7 +82,7 @@ func (r *InfoPostgres) GetFullNameByAgentID(uID string) (string, error) {
 	return fullName, nil
 }
 
-func (r *InfoPostgres) GetSupervisorFullNameByAgentID(uID string) (string, error) {
+func (r *InfoPostgres) GetSupervisorFullNameByAgentID(uID int) (string, error) {
 	var fullName string
 	query := fmt.Sprintf("SELECT CONCAT(u.surname, ' ', u.name, ' ', COALESCE(u.patronymic, '')) AS supervisor_name FROM %s u JOIN %s s ON u.id = s.id JOIN %s a ON a.supervisor_id = s.id WHERE a.id = $1", usersTable, supervisorsTable, agentsTable)
 	row := r.db.QueryRow(query, uID)
@@ -102,7 +92,7 @@ func (r *InfoPostgres) GetSupervisorFullNameByAgentID(uID string) (string, error
 	return fullName, nil
 }
 
-func (r *InfoPostgres) GetFullNameBySupID(supID string) (string, error) {
+func (r *InfoPostgres) GetFullNameBySupID(supID int) (string, error) {
 	var fullName string
 	query := fmt.Sprintf("SELECT CONCAT(surname, ' ', name, COALESCE(CONCAT(' ', patronymic), '')) AS full_name FROM %s u JOIN %s s ON u.id = s.id WHERE s.id = $1", usersTable, supervisorsTable)
 	row := r.db.QueryRow(query, supID)
@@ -119,7 +109,7 @@ type Rates struct {
 	CCTV       string
 }
 
-func (r *InfoPostgres) GetReportByAgentID(uID string) (*Rates, error) {
+func (r *InfoPostgres) GetReportByAgentID(uID int) (*Rates, error) {
 	var flag bool
 	report := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", reportsTable)
@@ -139,7 +129,7 @@ func (r *InfoPostgres) GetReportByAgentID(uID string) (*Rates, error) {
 	return report, nil
 }
 
-func (r *InfoPostgres) GetPlanByAgentID(uID string) (*Rates, error) {
+func (r *InfoPostgres) GetPlanByAgentID(uID int) (*Rates, error) {
 	var flag bool
 	plan := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE agent_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", plansTable)
@@ -159,7 +149,7 @@ func (r *InfoPostgres) GetPlanByAgentID(uID string) (*Rates, error) {
 	return plan, nil
 }
 
-func (r *InfoPostgres) GetPlanBySupID(supID string) (*Rates, error) {
+func (r *InfoPostgres) GetPlanBySupID(supID int) (*Rates, error) {
 	var flag bool
 	plan := &Rates{}
 	check_query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE supervisor_id = $1 AND DATE_TRUNC('month', date_time) = DATE_TRUNC('month', CURRENT_DATE)) AS result", plansTable)
@@ -179,7 +169,7 @@ func (r *InfoPostgres) GetPlanBySupID(supID string) (*Rates, error) {
 	return plan, nil
 }
 
-func (r *InfoPostgres) CheckForSupervisor(sup_id string) error {
+func (r *InfoPostgres) CheckForSupervisor(sup_id int) error {
 	query := fmt.Sprintf("SELECT id FROM %s WHERE id = $1", supervisorsTable)
 	row := r.db.QueryRow(query, sup_id)
 	if err := row.Scan(&sup_id); err != nil {
@@ -193,7 +183,7 @@ type AgentIDAndFullName struct {
 	FullName string
 }
 
-func (r *InfoPostgres) GetAllAgentsBySupID(supID string) ([]*AgentIDAndFullName, error) {
+func (r *InfoPostgres) GetAllAgentsBySupID(supID int) ([]*AgentIDAndFullName, error) {
 	query_test := fmt.Sprintf("SELECT COUNT(*) FROM %s a INNER JOIN %s u ON a.id = u.id AND u.is_valid = true WHERE supervisor_id = $1", agentsTable, usersTable)
 	rows_test, err := r.db.Query(query_test, supID)
 	if err != nil {

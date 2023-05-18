@@ -19,11 +19,7 @@ func (s *InfoService) GetAllSupervisors() ([]*model.Supervisor, error) {
 	return s.repo.GetAllSupervisors()
 }
 
-func (s *InfoService) GetUserRoleByID(uID string) (string, error) {
-	return s.repo.GetUserRoleByID(uID)
-}
-
-func (s *InfoService) GetIsValidByID(uID string) (bool, error) {
+func (s *InfoService) GetIsValidByID(uID int) (bool, error) {
 	return s.repo.GetIsValidByID(uID)
 }
 
@@ -34,7 +30,7 @@ type InfoAboutAgent struct {
 	Plan               *repository.Rates
 }
 
-func (s *InfoService) GetInfoAboutAgentByID(agentID string) (*InfoAboutAgent, error) {
+func (s *InfoService) GetInfoAboutAgentByID(agentID int) (*InfoAboutAgent, error) {
 
 	fullName, err := s.repo.GetFullNameByAgentID(agentID)
 	if err != nil {
@@ -62,7 +58,7 @@ type InfoAboutSupervisor struct {
 	Plan     *repository.Rates
 }
 
-func (s *InfoService) GetInfoAboutSupervisorByID(supID string) (*InfoAboutSupervisor, error) {
+func (s *InfoService) GetInfoAboutSupervisorByID(supID int) (*InfoAboutSupervisor, error) {
 	fullName, err := s.repo.GetFullNameBySupID(supID)
 	if err != nil {
 		return nil, err
@@ -81,7 +77,7 @@ type AgentIDAndFullName struct {
 	FullName string
 }
 
-func (s *InfoService) GetAllAgentsBySupID(supID string) ([]*repository.AgentIDAndFullName, error) {
+func (s *InfoService) GetAllAgentsBySupID(supID int) ([]*repository.AgentIDAndFullName, error) {
 	if err := s.repo.CheckForSupervisor(supID); err != nil {
 		err = errors.New("супервайзер с таким id не существует")
 		return nil, err

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -27,26 +28,15 @@ func (h *Handler) HandleGetAllSupervisors() http.HandlerFunc {
 	}
 }
 
-func (h *Handler) HandleGetRoleByID() http.HandlerFunc {
+func (h *Handler) HandleGetInfoAboutAgent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		uID := vars["id"]
-		role, err := h.services.Information.GetUserRoleByID(uID)
+		val, err := ParseFromContext(r, agent)
+		uID := val.ID
 		if err != nil {
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{"role": role})
-	}
-}
-
-func (h *Handler) HandleGetInfoAboutAgent() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		agentID := vars["id"]
-		info, err := h.services.Information.GetInfoAboutAgentByID(agentID)
+		info, err := h.services.Information.GetInfoAboutAgentByID(uID)
 		if err != nil {
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -59,9 +49,10 @@ func (h *Handler) HandleGetInfoAboutAgent() http.HandlerFunc {
 
 func (h *Handler) HandleGetAllAgentsBySupID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		supID := r.URL.Query().Get("supervisor_id")
-		if supID == "" {
-			NewErrorResponse(w, http.StatusBadRequest, "Отсутствует параметр supervisor_id")
+		val, err := ParseFromContext(r, supervisor)
+		supID := val.ID
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		agents, err := h.services.Information.GetAllAgentsBySupID(supID)
@@ -86,8 +77,12 @@ func (h *Handler) HandleGetAllAgentsBySupID() http.HandlerFunc {
 
 func (h *Handler) HandleGetInfoAboutSupervisor() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		supID := vars["id"]
+		val, err := ParseFromContext(r, supervisor)
+		supID := val.ID
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 		info, err := h.services.Information.GetInfoAboutSupervisorByID(supID)
 		if err != nil {
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
@@ -103,7 +98,12 @@ func (h *Handler) HandleGetIsValidByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		agentID := vars["id"]
-		isValid, err := h.services.Information.GetIsValidByID(agentID)
+		ID, err := strconv.Atoi(agentID)
+		if err != nil {
+			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		isValid, err := h.services.Information.GetIsValidByID(ID)
 		if err != nil {
 			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
 			return
