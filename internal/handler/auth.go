@@ -41,10 +41,6 @@ func (h *Handler) HandleRegistrationCode() http.HandlerFunc {
 				return
 			}
 		}
-		/*if err := h.services.Authorization.SetReportAndPlanTables(id); err != nil {
-			NewErrorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}*/
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
 	}

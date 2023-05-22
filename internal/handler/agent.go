@@ -9,6 +9,10 @@ import (
 
 func (h *Handler) HandleDeleteAgent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ParseFromContext(r, supervisor)
+		if err != nil {
+			return
+		}
 		vars := mux.Vars(r)
 		agentID := vars["id"]
 		id, err := h.services.Agent.DeleteAgent(agentID)

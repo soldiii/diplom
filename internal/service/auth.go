@@ -117,11 +117,6 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 		return 0, err
 	}
 
-	sup_id, err := strconv.Atoi(user.SupervisorID)
-	if err != nil {
-		return 0, err
-	}
-
 	supID, err := strconv.Atoi(user.SupervisorID)
 	if err != nil {
 		return 0, err
@@ -133,7 +128,7 @@ func (s *AuthService) CreateAgent(user *model.UserCode) (int, error) {
 	}
 
 	if emailFlag {
-		emailSupervisor, err := s.repo.GetSupervisorEmailFromID(sup_id)
+		emailSupervisor, err := s.repo.GetSupervisorEmailFromID(supID)
 		if err != nil {
 			return 0, err
 		}
@@ -347,6 +342,14 @@ func (s *AuthService) GenerateTokens(email, password string) (*Token, error) {
 	}
 	if !CheckPasswordHash(password, encryptedPassword) {
 		err := errors.New("неверный email или пароль")
+		return nil, err
+	}
+	userFlag, err := s.repo.IsUserValid(email)
+	if err != nil {
+		return nil, err
+	}
+	if !userFlag {
+		err := errors.New("агент удален супервайзером из системы")
 		return nil, err
 	}
 	user, err := s.repo.GetUser(email, encryptedPassword)

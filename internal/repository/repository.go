@@ -30,6 +30,7 @@ type Authorization interface {
 	IsUserHaveRefreshToken(int) (bool, error)
 	UpdateRefreshToken(int, string) (int, error)
 	CompareRefreshTokens(string, int) (bool, error)
+	IsUserValid(string) (bool, error)
 }
 
 type Information interface {

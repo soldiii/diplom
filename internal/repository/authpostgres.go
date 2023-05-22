@@ -43,7 +43,7 @@ func (r *AuthPostgres) CreateUserTempTable(user *model.UserCode) (int, error) {
 }
 
 func (r *AuthPostgres) CheckForEmail(email string) error {
-	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1", usersTable)
+	query := fmt.Sprintf("SELECT email FROM %s WHERE email = $1 AND is_valid=true", usersTable)
 	row := r.db.QueryRow(query, email)
 	if err := row.Scan(&email); err != nil {
 		return err
@@ -126,16 +126,47 @@ func (r *AuthPostgres) DeleteFromTempTableByEmail(email string) {
 	r.db.QueryRow(deleteQuery, email)
 }
 
-func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
+func GetRoleByEmail(r *AuthPostgres, email string) (string, error) {
 	var role string
 	query := fmt.Sprintf("SELECT role FROM %s WHERE email = $1", userCodesTable)
 	row := r.db.QueryRow(query, email)
 	if err := row.Scan(&role); err != nil {
+		return "", err
+	}
+	return role, nil
+}
+
+func UpdateAgent(r *AuthPostgres, email string) (int, error) {
+	var id int
+	queryUser := fmt.Sprintf("UPDATE %s SET name=uc.name, surname=uc.surname, patronymic=uc.patronymic, reg_date_time = uc.reg_date_time, encrypted_password=uc.encrypted_password, role=uc.role, is_valid=true FROM %s uc JOIN %s u ON u.email=uc.email WHERE uc.email = $1 RETURNING u.id", usersTable, userCodesTable, usersTable)
+	row := r.db.QueryRow(queryUser, email)
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	queryAgent := fmt.Sprintf("UPDATE %s a SET a.supervisor_id=uc.supervisor_id FROM %s uc INNER JOIN %s u ON uc.email = u.email WHERE a.id = u.id AND uc.email = $1", agentsTable, userCodesTable, usersTable)
+	r.db.QueryRow(queryAgent, email)
+	return id, nil
+}
+
+func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
+	role, err := GetRoleByEmail(r, email)
+	if err != nil {
+		return 0, err
+	}
+	userFlag, err := r.IsUserValid(email)
+	if err != nil {
 		return 0, err
 	}
 	var id int
 	switch role {
 	case "agent", "Agent":
+		if !userFlag {
+			id, err = UpdateAgent(r, email)
+			if err != nil {
+				return 0, err
+			}
+			break
+		}
 		queryUser := fmt.Sprintf("INSERT INTO %s (email, name, surname, patronymic, reg_date_time, encrypted_password, role, is_valid) SELECT email, name, surname, patronymic, reg_date_time, encrypted_password, role, true FROM %s WHERE email = $1 RETURNING id", usersTable, userCodesTable)
 		row := r.db.QueryRow(queryUser, email)
 		if err := row.Scan(&id); err != nil {
@@ -276,6 +307,19 @@ func (r *AuthPostgres) CompareRefreshTokens(token string, id int) (bool, error) 
 	var flag bool
 	query := fmt.Sprintf("SELECT CASE WHEN token = $1 THEN 1 ELSE 0 END as result FROM %s WHERE id = $2", refreshTokensTable)
 	row := r.db.QueryRow(query, token, id)
+	if err := row.Scan(&flag); err != nil {
+		return false, err
+	}
+	if !flag {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *AuthPostgres) IsUserValid(email string) (bool, error) {
+	var flag bool
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE email = $1 AND is_valid = true) AS result", usersTable)
+	row := r.db.QueryRow(query, email)
 	if err := row.Scan(&flag); err != nil {
 		return false, err
 	}
