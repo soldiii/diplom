@@ -138,7 +138,7 @@ func GetRoleByEmail(r *AuthPostgres, email string) (string, error) {
 
 func UpdateAgent(r *AuthPostgres, email string) (int, error) {
 	var id int
-	queryUser := fmt.Sprintf("UPDATE %s SET name=uc.name, surname=uc.surname, patronymic=uc.patronymic, reg_date_time = uc.reg_date_time, encrypted_password=uc.encrypted_password, role=uc.role, is_valid=true FROM %s uc JOIN %s u ON u.email=uc.email WHERE uc.email = $1 RETURNING u.id", usersTable, userCodesTable, usersTable)
+	queryUser := fmt.Sprintf("UPDATE %s SET name=uc.name, surname=uc.surname, patronymic=uc.patronymic, reg_date_time = uc.reg_date_time, encrypted_password=uc.encrypted_password, role=uc.role, is_valid=true FROM %s uc WHERE users.email=uc.email AND uc.email = $1 RETURNING users.id", usersTable, userCodesTable)
 	row := r.db.QueryRow(queryUser, email)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
