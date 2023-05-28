@@ -153,7 +153,14 @@ func (r *AuthPostgres) MigrateFromTemporaryTable(email string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	userFlag, err := r.IsUserValid(email)
+	var userFlag bool = true
+	emailFlag, err := r.IsEmailValid(email)
+	if err != nil {
+		return 0, err
+	}
+	if emailFlag {
+		userFlag, err = r.IsUserValid(email)
+	}
 	if err != nil {
 		return 0, err
 	}
